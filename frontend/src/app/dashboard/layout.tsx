@@ -207,49 +207,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     checkPin();
   }, [user, activeRole]);
 
-  // Verificar estado de suscripción
+  // Verificar estado de suscripción (Desactivado temporalmente por solicitud del usuario)
   useEffect(() => {
-    if (!user?.tenantId || user.role !== 'ADMINISTRADOR') {
-      setSubscriptionStatus('ACTIVE');
-      return;
-    }
-    
-    const checkSubscription = async () => {
-      try {
-        const tenantDoc = await getDoc(doc(db, 'tenants', user.tenantId));
-        if (tenantDoc.exists()) {
-          const data = tenantDoc.data();
-          if (data.subscriptionExpiresAt) {
-            const expiresAt = data.subscriptionExpiresAt.toDate();
-            const now = new Date();
-            if (now <= expiresAt) {
-              setSubscriptionStatus('ACTIVE');
-            } else {
-              const diffTime = now.getTime() - expiresAt.getTime();
-              const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-              if (diffDays < 3) {
-                setSubscriptionStatus('GRACE');
-                setGraceDaysLeft(3 - diffDays);
-              } else {
-                setSubscriptionStatus('LOCKED');
-              }
-            }
-          } else {
-            // Asignar prueba de 30 días si no tiene fecha
-            const dummyExpires = new Date();
-            dummyExpires.setDate(dummyExpires.getDate() + 30);
-            await updateDoc(doc(db, 'tenants', user.tenantId), {
-              subscriptionExpiresAt: dummyExpires,
-            });
-            setSubscriptionStatus('ACTIVE');
-          }
-        }
-      } catch (err) {
-        console.error('Error verificando suscripción:', err);
-      }
-    };
-    checkSubscription();
-  }, [user, payLoading]);
+    setSubscriptionStatus('ACTIVE');
+  }, [user]);
 
   // Notificaciones en tiempo real
   useEffect(() => {
