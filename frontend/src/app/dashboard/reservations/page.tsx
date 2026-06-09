@@ -37,7 +37,6 @@ interface CommonSpace {
   name: string;
   description: string;
   capacity: string;
-  cost: string;
   icon: string;
 }
 
@@ -47,7 +46,6 @@ const SPACES: CommonSpace[] = [
     name: 'Salón Social',
     description: 'Espacio cerrado ideal para reuniones, fiestas de cumpleaños y eventos familiares.',
     capacity: '80 personas',
-    cost: '$50.000 / hora',
     icon: '🏢',
   },
   {
@@ -55,7 +53,6 @@ const SPACES: CommonSpace[] = [
     name: 'Zona BBQ',
     description: 'Área al aire libre equipada con asador, mesas y lavaplatos para tus reuniones.',
     capacity: '20 personas',
-    cost: '$30.000 / hora',
     icon: '🥩',
   },
   {
@@ -63,7 +60,6 @@ const SPACES: CommonSpace[] = [
     name: 'Cancha Sintética',
     description: 'Cancha de fútbol 5 para prácticas deportivas, torneos y recreación familiar.',
     capacity: '12 personas',
-    cost: '$20.000 / hora',
     icon: '⚽',
   },
   {
@@ -71,7 +67,6 @@ const SPACES: CommonSpace[] = [
     name: 'Gimnasio',
     description: 'Equipado con máquinas cardiovasculares y de peso para rutinas de acondicionamiento.',
     capacity: '8 personas',
-    cost: 'Gratuito (Requiere reserva)',
     icon: '💪',
   },
 ];
@@ -305,13 +300,13 @@ export default function ReservationsPage() {
 
   // Cancelar/Eliminar Reserva
   const handleDeleteReservation = async (resId: string) => {
-    if (!confirm('¿Está seguro de cancelar esta reserva?')) return;
+    if (!confirm('¿Está seguro de que desea eliminar esta reserva?')) return;
     try {
       await deleteDoc(doc(db, 'reservations', resId));
       await loadReservations();
     } catch (e) {
       console.error(e);
-      alert('Error al cancelar la reserva.');
+      alert('Error al eliminar la reserva.');
     }
   };
 
@@ -384,10 +379,6 @@ export default function ReservationsPage() {
                 <span className="flex items-center space-x-1">
                   <User className="h-3 w-3 text-violet-400" />
                   <span>Capacidad: {selectedSpace.capacity}</span>
-                </span>
-                <span className="flex items-center space-x-1">
-                  <MapPin className="h-3 w-3 text-sky-400" />
-                  <span>Costo: {selectedSpace.cost}</span>
                 </span>
               </div>
             </div>
@@ -503,8 +494,7 @@ export default function ReservationsPage() {
               <div className="flex-1 overflow-y-auto space-y-3 pr-1">
                 {dayReservations.map((res) => {
                   const isOwnBooking = res.userId === user?.id;
-                  const isAdmin = user?.role === 'ADMINISTRADOR';
-                  const canDelete = isOwnBooking || isAdmin;
+                  const canDelete = isOwnBooking;
 
                   return (
                     <div
@@ -595,8 +585,8 @@ export default function ReservationsPage() {
                     <span className="text-xs font-bold text-zinc-200">{residentUnit}</span>
                   </div>
                   <div>
-                    <span className="block text-[10px] text-zinc-500 font-bold uppercase mb-1">Costo estimado</span>
-                    <span className="text-xs font-bold text-emerald-400">{selectedSpace.cost}</span>
+                    <span className="block text-[10px] text-zinc-500 font-bold uppercase mb-1">Espacio</span>
+                    <span className="text-xs font-bold text-violet-400">{selectedSpace.name}</span>
                   </div>
                 </div>
 
