@@ -213,6 +213,14 @@ export default function LoginPage() {
           </form>
         </div>
 
+        {/* Sign up link */}
+        <p className="mt-6 text-center text-xs text-slate-500">
+          ¿No tienes una cuenta?{' '}
+          <Link href="/register" className="text-indigo-400 hover:text-indigo-300 font-bold underline transition-colors">
+            Regístrate aquí
+          </Link>
+        </p>
+
         {/* Demo credentials hint */}
         <div className="mt-6 p-4 border border-slate-800/80 bg-slate-900/20 rounded-2xl text-xs text-slate-400 leading-relaxed">
           <p className="font-bold text-slate-300 mb-1">Cuentas de demostración:</p>
