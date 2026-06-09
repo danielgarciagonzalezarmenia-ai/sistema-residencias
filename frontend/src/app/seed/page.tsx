@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { auth, db } from '../../lib/firebase';
+import { auth, db, isConfigured } from '../../lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { Sparkles, Loader2, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
@@ -191,6 +191,18 @@ export default function SeedPage() {
         <p className="text-slate-400 text-sm mb-6 leading-relaxed">
           Esta utilidad creará el conjunto residencial de prueba y las 3 cuentas demostrativas en tu proyecto activo de Firebase. Asegúrate de haber copiado las claves del proyecto en el archivo <code className="text-indigo-300">firebase.ts</code> o en las variables de entorno.
         </p>
+
+        {!isConfigured && (
+          <div className="mb-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-200 text-xs flex items-start space-x-2.5">
+            <AlertTriangle className="h-4.5 w-4.5 shrink-0 text-amber-400 mt-0.5" />
+            <div>
+              <p className="font-bold mb-1">Firebase no configurado</p>
+              <p className="leading-normal text-slate-300">
+                Las claves de conexión no se han detectado. Asegúrate de haber agregado los Secrets en tu repositorio de GitHub y que el build se haya completado.
+              </p>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="mb-6 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-xs flex items-start space-x-2">

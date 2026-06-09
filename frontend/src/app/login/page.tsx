@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Building2, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { isConfigured } from '../../lib/firebase';
+import { Building2, Mail, Lock, Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
@@ -91,6 +92,18 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="bg-slate-900/40 border border-slate-800 backdrop-blur-xl p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+          {!isConfigured && (
+            <div className="mb-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-200 text-xs flex items-start space-x-2.5">
+              <AlertTriangle className="h-4.5 w-4.5 shrink-0 text-amber-400 mt-0.5" />
+              <div>
+                <p className="font-bold mb-1">Firebase no configurado</p>
+                <p className="leading-normal text-slate-300">
+                  Las claves de conexión no se han detectado. Asegúrate de haber agregado los Secrets en tu repositorio de GitHub y que el build se haya completado.
+                </p>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="mb-6 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-sm">
               {error}
