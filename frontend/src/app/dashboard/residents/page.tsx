@@ -230,11 +230,11 @@ export default function ResidentsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-100 flex items-center space-x-2">
-            <Users className="h-7 w-7 text-indigo-500" />
+          <h1 className="text-2xl font-extrabold text-zinc-100 flex items-center space-x-2">
+            <Users className="h-7 w-7 text-violet-500" />
             <span>Módulo de Residentes</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-zinc-400 mt-1">
             Gestión de copropietarios e inquilinos registrados (Base de datos Firestore).
           </p>
         </div>
@@ -244,7 +244,7 @@ export default function ResidentsPage() {
             setFormError(null);
             setIsCreateOpen(true);
           }}
-          className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-colors shadow-lg shadow-indigo-600/10"
+          className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-medium bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-colors shadow-lg shadow-violet-600/10"
         >
           <Plus className="h-4 w-4" />
           <span>Agregar Residente</span>
@@ -252,33 +252,33 @@ export default function ResidentsPage() {
       </div>
 
       {/* Filters */}
-      <div className="p-4 rounded-2xl border border-slate-900 bg-slate-900/20 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="p-4 rounded-2xl border border-zinc-900 bg-zinc-900/20 grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1.5">Torre</label>
+          <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1.5">Torre</label>
           <input
             type="text"
             placeholder="Ej: Torre 1"
             value={filterTower}
             onChange={(e) => setFilterTower(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs"
+            className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
           />
         </div>
         <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1.5">Apartamento</label>
+          <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1.5">Apartamento</label>
           <input
             type="text"
             placeholder="Ej: Apto 101"
             value={filterUnit}
             onChange={(e) => setFilterUnit(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs"
+            className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
           />
         </div>
         <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1.5">Estado</label>
+          <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1.5">Estado</label>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-300 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs"
+            className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-300 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
           >
             <option value="">Todos</option>
             <option value="ACTIVE">Activos</option>
@@ -290,54 +290,54 @@ export default function ResidentsPage() {
       {/* List */}
       {loading ? (
         <div className="h-64 flex flex-col items-center justify-center">
-          <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mb-3" />
-          <p className="text-xs text-slate-500">Cargando residentes desde Cloud Firestore...</p>
+          <Loader2 className="h-8 w-8 text-violet-500 animate-spin mb-3" />
+          <p className="text-xs text-zinc-500">Cargando residentes desde Cloud Firestore...</p>
         </div>
       ) : error ? (
-        <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-sm">
+        <div className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-200 text-sm">
           {error}
         </div>
       ) : filteredResidents.length === 0 ? (
-        <div className="p-10 border border-dashed border-slate-800 rounded-2xl text-center">
-          <p className="text-sm text-slate-500">No se encontraron residentes con los filtros especificados.</p>
+        <div className="p-10 border border-dashed border-zinc-800 rounded-2xl text-center">
+          <p className="text-sm text-zinc-500">No se encontraron residentes con los filtros especificados.</p>
         </div>
       ) : (
-        <div className="border border-slate-900 bg-slate-900/15 rounded-2xl overflow-hidden">
+        <div className="border border-zinc-900 bg-zinc-900/15 rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-400">
-              <thead className="text-xs text-slate-500 uppercase border-b border-slate-800/60 bg-slate-900/30">
+            <table className="w-full text-left text-sm text-zinc-400">
+              <thead className="text-xs text-zinc-500 uppercase border-b border-zinc-800/60 bg-zinc-900/30">
                 <tr>
-                  <th className="py-3 px-4 font-semibold">Residente</th>
-                  <th className="py-3 px-4 font-semibold">Documento</th>
-                  <th className="py-3 px-4 font-semibold">Contacto</th>
-                  <th className="py-3 px-4 font-semibold">Inmueble</th>
-                  <th className="py-3 px-4 font-semibold text-center">Estado</th>
-                  <th className="py-3 px-4 font-semibold text-right">Acciones</th>
+                  <th className="py-3 px-4 font-medium">Residente</th>
+                  <th className="py-3 px-4 font-medium">Documento</th>
+                  <th className="py-3 px-4 font-medium">Contacto</th>
+                  <th className="py-3 px-4 font-medium">Inmueble</th>
+                  <th className="py-3 px-4 font-medium text-center">Estado</th>
+                  <th className="py-3 px-4 font-medium text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/40">
+              <tbody className="divide-y divide-zinc-800/40">
                 {filteredResidents.map((resident) => (
-                  <tr key={resident.id} className="hover:bg-slate-900/10 transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-slate-200">
+                  <tr key={resident.id} className="hover:bg-zinc-900/10 transition-colors">
+                    <td className="py-3.5 px-4 font-bold text-zinc-200">
                       {resident.firstName} {resident.lastName}
                     </td>
                     <td className="py-3.5 px-4">{resident.document}</td>
                     <td className="py-3.5 px-4 text-xs">
-                      <p className="text-slate-300">{resident.email}</p>
-                      <p className="text-slate-500 mt-0.5">{resident.phone || 'Sin teléfono'}</p>
+                      <p className="text-zinc-300">{resident.email}</p>
+                      <p className="text-zinc-500 mt-0.5">{resident.phone || 'Sin teléfono'}</p>
                     </td>
                     <td className="py-3.5 px-4">
                       {resident.properties.length > 0 ? (
                         resident.properties.map((p, pIdx) => (
                           <span
                             key={pIdx}
-                            className="inline-flex px-2 py-0.5 text-[10px] font-semibold text-slate-300 bg-slate-800 rounded-full border border-slate-700/60 mr-1"
+                            className="inline-flex px-2 py-0.5 text-[10px] font-medium text-zinc-300 bg-zinc-800 rounded-full border border-zinc-700/60 mr-1"
                           >
                             {p.tower} - {p.unit}
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs text-slate-600 italic">No asignado</span>
+                        <span className="text-xs text-zinc-600 italic">No asignado</span>
                       )}
                     </td>
                     <td className="py-3.5 px-4 text-center">
@@ -346,7 +346,7 @@ export default function ResidentsPage() {
                         className={`inline-flex items-center space-x-1 px-2 py-0.5 text-[10px] font-bold rounded-full cursor-pointer ${
                           resident.status === 'ACTIVE'
                             ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
-                            : 'text-slate-400 bg-slate-800 border border-slate-700'
+                            : 'text-zinc-400 bg-zinc-800 border border-zinc-700'
                         }`}
                       >
                         {resident.status === 'ACTIVE' ? (
@@ -366,13 +366,13 @@ export default function ResidentsPage() {
                       <div className="flex items-center justify-end space-x-2">
                         <button
                           onClick={() => handleToggleStatus(resident.id, resident.status)}
-                          className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-200 transition-colors"
+                          className="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-200 transition-colors"
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(resident.id)}
-                          className="p-1.5 hover:bg-red-500/10 rounded-lg text-slate-500 hover:text-red-400 transition-colors"
+                          className="p-1.5 hover:bg-rose-500/10 rounded-lg text-zinc-500 hover:text-rose-400 transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -395,21 +395,21 @@ export default function ResidentsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsCreateOpen(false)}
-              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl relative z-10"
+              className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl relative z-10"
             >
-              <h3 className="text-lg font-bold text-slate-100 mb-2">Agregar Nuevo Residente</h3>
-              <p className="text-xs text-slate-500 mb-6">
+              <h3 className="text-lg font-bold text-zinc-100 mb-2">Agregar Nuevo Residente</h3>
+              <p className="text-xs text-zinc-500 mb-6">
                 Llene el formulario para registrar un nuevo habitante directamente en Firestore.
               </p>
 
               {formError && (
-                <div className="mb-4 p-3 rounded-lg border border-red-500/20 bg-red-500/10 text-red-200 text-xs">
+                <div className="mb-4 p-3 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-200 text-xs">
                   {formError}
                 </div>
               )}
@@ -417,71 +417,71 @@ export default function ResidentsPage() {
               <form onSubmit={handleCreate} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">Nombre *</label>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Nombre *</label>
                     <input
                       type="text"
                       required
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       placeholder="Juan"
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">Apellido *</label>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Apellido *</label>
                     <input
                       type="text"
                       required
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       placeholder="Pérez"
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">Documento (CC/CE) *</label>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Documento (CC/CE) *</label>
                     <input
                       type="text"
                       required
                       value={document}
                       onChange={(e) => setDocument(e.target.value)}
                       placeholder="1012345678"
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">Teléfono</label>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Teléfono</label>
                     <input
                       type="text"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="3001234567"
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs"
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1.5">Correo Electrónico *</label>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Correo Electrónico *</label>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="juan.perez@email.com"
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs"
+                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1.5">Asociar a Inmueble</label>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Asociar a Inmueble</label>
                   <select
                     value={selectedPropertyId}
                     onChange={(e) => setSelectedPropertyId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-300 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs"
+                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-300 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
                   >
                     <option value="">-- No asociar de inmediato --</option>
                     {properties.map((prop) => (
@@ -492,18 +492,18 @@ export default function ResidentsPage() {
                   </select>
                 </div>
 
-                <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-850">
+                <div className="flex items-center justify-end space-x-3 pt-4 border-t border-zinc-850">
                   <button
                     type="button"
                     onClick={() => setIsCreateOpen(false)}
-                    className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors"
+                    className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all shadow-lg shadow-indigo-600/10 flex items-center space-x-1"
+                    className="px-4 py-2 text-xs font-medium text-white bg-violet-600 hover:bg-violet-500 rounded-xl transition-all shadow-lg shadow-violet-600/10 flex items-center space-x-1"
                   >
                     {isSubmitting && <Loader2 className="h-3 w-3 animate-spin" />}
                     <span>Guardar Residente</span>

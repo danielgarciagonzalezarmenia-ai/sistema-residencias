@@ -133,9 +133,9 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-slate-950 relative px-4 py-12">
+    <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-zinc-950 relative px-4 py-12">
       {/* Background Blurs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
 
       <motion.div
@@ -147,7 +147,7 @@ export default function RegisterPage() {
         {/* Back Link */}
         <Link
           href="/login"
-          className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors mb-6 group"
+          className="inline-flex items-center space-x-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors mb-6 group"
         >
           <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
           <span>Volver al Login</span>
@@ -155,22 +155,22 @@ export default function RegisterPage() {
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-6 text-center">
-          <div className="p-3 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl mb-3">
-            <Building2 className="h-9 w-9 text-indigo-400" />
+          <div className="p-3 bg-violet-600/10 border border-violet-500/20 rounded-2xl mb-3">
+            <Building2 className="h-9 w-9 text-violet-400" />
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-violet-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
             Registro en Acacias Smart
           </h1>
-          <p className="text-slate-400 text-xs mt-1">
+          <p className="text-zinc-400 text-xs mt-1">
             Cree su cuenta de administración o vincúlese como residente.
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-slate-900/40 border border-slate-800 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+        <div className="bg-zinc-900/40 border border-zinc-800 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
           
           {/* Tab Selector */}
-          <div className="flex border-b border-slate-800 mb-6">
+          <div className="flex border-b border-zinc-800 mb-6">
             <button
               onClick={() => {
                 if (!loading) {
@@ -180,8 +180,8 @@ export default function RegisterPage() {
               }}
               className={`flex-1 pb-3 text-xs font-bold transition-colors border-b-2 flex items-center justify-center space-x-1.5 ${
                 activeTab === 'admin'
-                  ? 'border-indigo-500 text-slate-100'
-                  : 'border-transparent text-slate-500 hover:text-slate-400'
+                  ? 'border-violet-500 text-zinc-100'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-400'
               }`}
             >
               <Building className="h-4 w-4" />
@@ -196,8 +196,8 @@ export default function RegisterPage() {
               }}
               className={`flex-1 pb-3 text-xs font-bold transition-colors border-b-2 flex items-center justify-center space-x-1.5 ${
                 activeTab === 'resident'
-                  ? 'border-indigo-500 text-slate-100'
-                  : 'border-transparent text-slate-500 hover:text-slate-400'
+                  ? 'border-violet-500 text-zinc-100'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-400'
               }`}
             >
               <User className="h-4 w-4" />
@@ -206,8 +206,8 @@ export default function RegisterPage() {
           </div>
 
           {error && (
-            <div className="mb-6 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-xs flex items-start space-x-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
+            <div className="mb-6 p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-200 text-xs flex items-start space-x-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
@@ -217,7 +217,7 @@ export default function RegisterPage() {
               <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
               <div>
                 <p className="font-bold mb-0.5">¡Registro completado!</p>
-                <p className="text-slate-350">Redirigiendo a tu espacio de trabajo...</p>
+                <p className="text-zinc-350">Redirigiendo a tu espacio de trabajo...</p>
               </div>
             </div>
           )}
@@ -226,7 +226,7 @@ export default function RegisterPage() {
             
             {/* Explicación rápida para residente */}
             {activeTab === 'resident' && (
-              <div className="p-3 bg-indigo-500/5 border border-indigo-500/15 rounded-xl text-[11px] text-slate-300 leading-relaxed">
+              <div className="p-3 bg-violet-500/5 border border-violet-500/15 rounded-xl text-[11px] text-zinc-300 leading-relaxed">
                 ℹ️ Para poder registrarte como residente, tu administrador debe haber agregado previamente tu correo en la lista de <strong>Residentes</strong> del conjunto residencial.
               </div>
             )}
@@ -234,7 +234,7 @@ export default function RegisterPage() {
             {/* Campos de Nombre */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs text-slate-400 mb-1.5">Nombre *</label>
+                <label className="block text-xs text-zinc-400 mb-1.5">Nombre *</label>
                 <input
                   type="text"
                   required
@@ -242,11 +242,11 @@ export default function RegisterPage() {
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Juan"
-                  className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs disabled:opacity-50"
+                  className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1.5">Apellido *</label>
+                <label className="block text-xs text-zinc-400 mb-1.5">Apellido *</label>
                 <input
                   type="text"
                   required
@@ -254,7 +254,7 @@ export default function RegisterPage() {
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Pérez"
-                  className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs disabled:opacity-50"
+                  className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
                 />
               </div>
             </div>
@@ -262,7 +262,7 @@ export default function RegisterPage() {
             {/* Correo y Clave */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs text-slate-400 mb-1.5">Correo Electrónico *</label>
+                <label className="block text-xs text-zinc-400 mb-1.5">Correo Electrónico *</label>
                 <input
                   type="email"
                   required
@@ -270,11 +270,11 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="ejemplo@correo.com"
-                  className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs disabled:opacity-50"
+                  className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1.5">Contraseña *</label>
+                <label className="block text-xs text-zinc-400 mb-1.5">Contraseña *</label>
                 <input
                   type="password"
                   required
@@ -282,7 +282,7 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Min. 6 caracteres"
-                  className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs disabled:opacity-50"
+                  className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
                 />
               </div>
             </div>
@@ -294,16 +294,16 @@ export default function RegisterPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="space-y-4 pt-2 border-t border-slate-800/80 overflow-hidden"
+                  className="space-y-4 pt-2 border-t border-zinc-800/80 overflow-hidden"
                 >
-                  <div className="flex items-center space-x-1.5 text-indigo-400 pb-1">
+                  <div className="flex items-center space-x-1.5 text-violet-400 pb-1">
                     <Sparkles className="h-4 w-4" />
                     <span className="text-[11px] font-bold uppercase tracking-wider">Detalles de la Residencia</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs text-slate-400 mb-1.5">Nombre del Conjunto *</label>
+                      <label className="block text-xs text-zinc-400 mb-1.5">Nombre del Conjunto *</label>
                       <input
                         type="text"
                         required={activeTab === 'admin'}
@@ -311,24 +311,24 @@ export default function RegisterPage() {
                         value={condoName}
                         onChange={(e) => setCondoName(e.target.value)}
                         placeholder="Club Residencial Las Acacias"
-                        className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs disabled:opacity-50"
+                        className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-400 mb-1.5">NIT del Conjunto (Opcional)</label>
+                      <label className="block text-xs text-zinc-400 mb-1.5">NIT del Conjunto (Opcional)</label>
                       <input
                         type="text"
                         disabled={loading || success}
                         value={condoNit}
                         onChange={(e) => setCondoNit(e.target.value)}
                         placeholder="900.123.456-7"
-                        className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs disabled:opacity-50"
+                        className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">Dirección del Conjunto *</label>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Dirección del Conjunto *</label>
                     <input
                       type="text"
                       required={activeTab === 'admin'}
@@ -336,7 +336,7 @@ export default function RegisterPage() {
                       value={condoAddress}
                       onChange={(e) => setCondoAddress(e.target.value)}
                       placeholder="Calle 100 # 15-30, Bogotá"
-                      className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-xs disabled:opacity-50"
+                      className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
                     />
                   </div>
                 </motion.div>
@@ -346,7 +346,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading || success}
-              className="w-full py-2.5 px-4 font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-500 disabled:bg-indigo-850/50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center space-x-2 text-sm pt-2"
+              className="w-full py-2.5 px-4 font-medium text-white bg-violet-600 rounded-xl hover:bg-violet-500 disabled:bg-violet-950/50 disabled:cursor-not-allowed transition-all shadow-lg shadow-violet-600/20 flex items-center justify-center space-x-2 text-sm pt-2"
             >
               {loading ? (
                 <>
@@ -361,9 +361,9 @@ export default function RegisterPage() {
         </div>
 
         {/* Link to login */}
-        <p className="mt-6 text-center text-xs text-slate-500">
+        <p className="mt-6 text-center text-xs text-zinc-500">
           ¿Ya tiene una cuenta?{' '}
-          <Link href="/login" className="text-indigo-400 hover:text-indigo-300 font-bold underline transition-colors">
+          <Link href="/login" className="text-violet-400 hover:text-violet-300 font-bold underline transition-colors">
             Inicie Sesión aquí
           </Link>
         </p>

@@ -66,9 +66,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-slate-950 relative px-4 py-12">
+    <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-zinc-950 relative px-4 py-12">
       {/* Decorative Blur Background Circles */}
-      <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
 
       <motion.div
@@ -79,25 +79,25 @@ export default function LoginPage() {
       >
         {/* Logo */}
         <div className="flex flex-col items-center mb-8 text-center">
-          <div className="p-3 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl mb-4">
-            <Building2 className="h-10 w-10 text-indigo-400" />
+          <div className="p-3 bg-violet-600/10 border border-violet-500/20 rounded-2xl mb-4">
+            <Building2 className="h-10 w-10 text-violet-400" />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-violet-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
             Acacias Smart
           </h1>
-          <p className="text-slate-400 text-sm mt-2">
+          <p className="text-zinc-400 text-sm mt-2">
             Ingrese sus credenciales para acceder al portal administrativo.
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-slate-900/40 border border-slate-800 backdrop-blur-xl p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+        <div className="bg-zinc-900/40 border border-zinc-800 backdrop-blur-xl p-8 rounded-3xl shadow-2xl relative overflow-hidden">
           {!isConfigured && (
             <div className="mb-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-200 text-xs flex items-start space-x-2.5">
               <AlertTriangle className="h-4.5 w-4.5 shrink-0 text-amber-400 mt-0.5" />
               <div>
                 <p className="font-bold mb-1">Firebase no configurado</p>
-                <p className="leading-normal text-slate-300">
+                <p className="leading-normal text-zinc-300">
                   Las claves de conexión no se han detectado. Asegúrate de haber agregado los Secrets en tu repositorio de GitHub y que el build se haya completado.
                 </p>
               </div>
@@ -105,7 +105,7 @@ export default function LoginPage() {
           )}
 
           {error && (
-            <div className="mb-6 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-sm">
+            <div className="mb-6 p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-200 text-sm">
               {error}
             </div>
           )}
@@ -113,65 +113,65 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Correo */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-zinc-300 mb-2">
                 Correo Electrónico
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-500" />
+                  <Mail className="h-5 w-5 text-zinc-500" />
                 </div>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="ejemplo@correo.com"
-                  className={`w-full pl-11 pr-4 py-3 bg-slate-950/60 border ${
-                    emailError ? 'border-red-500/50' : 'border-slate-800'
-                  } rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-sm`}
+                  className={`w-full pl-11 pr-4 py-3 bg-zinc-950/60 border ${
+                    emailError ? 'border-rose-500/50' : 'border-zinc-800'
+                  } rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-sm`}
                 />
               </div>
               {emailError && (
-                <p className="mt-1.5 text-xs text-red-400">{emailError}</p>
+                <p className="mt-1.5 text-xs text-rose-400">{emailError}</p>
               )}
             </div>
 
             {/* Contraseña */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-slate-300">
+                <label className="block text-sm font-medium text-zinc-300">
                   Contraseña
                 </label>
                 <button
                   type="button"
                   onClick={() => alert('Para restablecer su contraseña, por favor contacte al administrador del conjunto.')}
-                  className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                  className="text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
                 >
                   ¿Olvidó su contraseña?
                 </button>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-500" />
+                  <Lock className="h-5 w-5 text-zinc-500" />
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className={`w-full pl-11 pr-11 py-3 bg-slate-950/60 border ${
-                    passwordError ? 'border-red-500/50' : 'border-slate-800'
-                  } rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 transition-colors text-sm`}
+                  className={`w-full pl-11 pr-11 py-3 bg-zinc-950/60 border ${
+                    passwordError ? 'border-rose-500/50' : 'border-zinc-800'
+                  } rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-sm`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-400"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-400"
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
               {passwordError && (
-                <p className="mt-1.5 text-xs text-red-400">{passwordError}</p>
+                <p className="mt-1.5 text-xs text-rose-400">{passwordError}</p>
               )}
             </div>
 
@@ -182,14 +182,14 @@ export default function LoginPage() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4.5 h-4.5 accent-indigo-600 rounded bg-slate-950 border-slate-800"
+                  className="w-4.5 h-4.5 accent-violet-600 rounded bg-zinc-950 border-zinc-800"
                 />
-                <span className="text-xs text-slate-400">Recordar sesión</span>
+                <span className="text-xs text-zinc-400">Recordar sesión</span>
               </label>
 
               <span
                 onClick={() => alert('La autenticación multifactor (MFA) se habilitará en la versión 2.0.')}
-                className="text-[10px] text-slate-500 cursor-pointer hover:underline"
+                className="text-[10px] text-zinc-500 cursor-pointer hover:underline"
               >
                 MFA disponible pronto
               </span>
@@ -199,7 +199,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-500 disabled:bg-indigo-800/50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center space-x-2 text-sm"
+              className="w-full py-3 px-4 font-medium text-white bg-violet-600 rounded-xl hover:bg-violet-500 disabled:bg-violet-800/50 disabled:cursor-not-allowed transition-all shadow-lg shadow-violet-600/20 flex items-center justify-center space-x-2 text-sm"
             >
               {loading ? (
                 <>
@@ -214,19 +214,19 @@ export default function LoginPage() {
         </div>
 
         {/* Sign up link */}
-        <p className="mt-6 text-center text-xs text-slate-500">
+        <p className="mt-6 text-center text-xs text-zinc-500">
           ¿No tienes una cuenta?{' '}
-          <Link href="/register" className="text-indigo-400 hover:text-indigo-300 font-bold underline transition-colors">
+          <Link href="/register" className="text-violet-400 hover:text-violet-300 font-bold underline transition-colors">
             Regístrate aquí
           </Link>
         </p>
 
         {/* Demo credentials hint */}
-        <div className="mt-6 p-4 border border-slate-800/80 bg-slate-900/20 rounded-2xl text-xs text-slate-400 leading-relaxed">
-          <p className="font-bold text-slate-300 mb-1">Cuentas de demostración:</p>
+        <div className="mt-6 p-4 border border-zinc-800/80 bg-zinc-900/20 rounded-2xl text-xs text-zinc-400 leading-relaxed">
+          <p className="font-bold text-zinc-300 mb-1">Cuentas de demostración:</p>
           <ul className="space-y-1 list-disc list-inside">
-            <li>Administración: <code className="text-indigo-300">admin@acacias.com</code> / <code className="text-indigo-300">password123</code></li>
-            <li>Vigilancia (Portería): <code className="text-indigo-300">porteria@acacias.com</code> / <code className="text-indigo-300">password123</code></li>
+            <li>Administración: <code className="text-violet-300">admin@acacias.com</code> / <code className="text-violet-300">password123</code></li>
+            <li>Vigilancia (Portería): <code className="text-violet-300">porteria@acacias.com</code> / <code className="text-violet-300">password123</code></li>
           </ul>
         </div>
       </motion.div>
