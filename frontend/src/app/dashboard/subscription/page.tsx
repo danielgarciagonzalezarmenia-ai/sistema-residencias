@@ -97,7 +97,7 @@ export default function SubscriptionPage() {
         const data = d.data();
         list.push({
           id: d.id,
-          amount: data.amount || 50000,
+          amount: data.amount || 59900,
           paymentMethod: data.paymentMethod || 'PSE',
           status: data.status || 'PAID',
           paidAt: data.paidAt,
@@ -138,14 +138,14 @@ export default function SubscriptionPage() {
 
       // 3. Registrar factura
       await addDoc(collection(db, 'tenants', user.tenantId, 'invoices'), {
-        amount: 50000,
+        amount: 59900,
         paymentMethod: 'PSE / Bancolombia',
         status: 'PAID',
         paidAt: serverTimestamp(),
         expiresAt: nextExpires,
       });
 
-      setSuccessMessage('¡Pago de 50.000 COP recibido exitosamente! Su suscripción se ha extendido por 30 días.');
+      setSuccessMessage('¡Pago de 59.900 COP recibido exitosamente! Su suscripción se ha extendido por 30 días.');
       fetchSubscriptionDetails();
       setTimeout(() => setSuccessMessage(''), 4000);
     } catch (err) {
@@ -208,7 +208,7 @@ export default function SubscriptionPage() {
             </div>
 
             <div>
-              <p className="text-3xl font-black text-zinc-100">50.000 COP<span className="text-xs text-zinc-500 font-medium">/mes</span></p>
+              <p className="text-3xl font-black text-zinc-100">59.900 COP<span className="text-xs text-zinc-500 font-medium">/mes</span></p>
               <p className="text-xs text-zinc-400 mt-1">Soporte premium, actualizaciones y acceso ilimitado</p>
             </div>
 

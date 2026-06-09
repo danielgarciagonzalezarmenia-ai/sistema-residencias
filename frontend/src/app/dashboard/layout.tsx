@@ -702,7 +702,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="space-y-2">
                 <h3 className="text-lg font-bold text-zinc-100">Acceso Suspendido</h3>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  El período de gracia de 3 días para el pago de la suscripción mensual de 50.000 COP ha expirado. Por favor, realice el pago para restaurar el acceso.
+                  El período de gracia de 3 días para el pago de la suscripción mensual de 59.900 COP ha expirado. Por favor, realice el pago para restaurar el acceso.
                 </p>
               </div>
               
@@ -713,7 +713,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-violet-600/20 transition-all flex items-center justify-center space-x-1.5"
                 >
                   {payLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  <span>Pagar Suscripción vía PSE (50.000 COP)</span>
+                  <span>Pagar Suscripción vía PSE (59.900 COP)</span>
                 </button>
               </div>
             </div>
