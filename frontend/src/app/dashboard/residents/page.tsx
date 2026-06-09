@@ -1,27 +1,34 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { api } from '../../../lib/api';
+import { db } from '../../../lib/firebase';
+import { useAuth } from '../../../context/AuthContext';
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  doc,
+  updateDoc,
+  deleteDoc,
+  orderBy,
+} from 'firebase/firestore';
 import {
   Users,
-  Search,
   Plus,
   Edit2,
   Trash2,
   CheckCircle,
   XCircle,
   Loader2,
-  Filter,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-interface PropertyRelation {
-  property: {
-    id: string;
-    tower: string;
-    unit: string;
-  };
-  isPrimary: boolean;
+interface ResidentProperty {
+  id: string;
+  tower: string;
+  unit: string;
 }
 
 interface Resident {
@@ -30,10 +37,11 @@ interface Resident {
   lastName: string;
   document: string;
   email: string;
-  phone: string | null;
+  phone: string;
   status: string;
-  createdAt: string;
-  properties: PropertyRelation[];
+  tenantId: string;
+  properties: ResidentProperty[];
+  createdAt: any;
 }
 
 interface Property {
@@ -43,6 +51,7 @@ interface Property {
 }
 
 export default function ResidentsPage() {
+  const { user } = useAuth();
   const [residents, setResidents] = useState<Resident[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,11 +62,11 @@ export default function ResidentsPage() {
   const [filterUnit, setFilterUnit] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
-  // Estados de modales
+  // Modales
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Formulario de creación
+  // Formulario
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [document, setDocument] = useState('');
@@ -66,25 +75,54 @@ export default function ResidentsPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Cargar datos
   const loadData = async () => {
+    if (!user?.tenantId) return;
     setLoading(true);
     setError(null);
     try {
-      // Cargar residentes con filtros
-      const queryParams = new URLSearchParams();
-      if (filterTower) queryParams.append('tower', filterTower);
-      if (filterUnit) queryParams.append('unit', filterUnit);
-      if (filterStatus) queryParams.append('status', filterStatus);
+      // 1. Cargar residentes de este Tenant
+      const residentsQuery = query(
+        collection(db, 'residents'),
+        where('tenantId', '==', user.tenantId)
+      );
+      const residentsSnap = await getDocs(residentsQuery);
+      const residentsList: Resident[] = [];
+      residentsSnap.forEach((doc) => {
+        const data = doc.data();
+        residentsList.push({
+          id: doc.id,
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          document: data.document || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          status: data.status || 'ACTIVE',
+          tenantId: data.tenantId || '',
+          properties: data.properties || [],
+          createdAt: data.createdAt,
+        });
+      });
+      setResidents(residentsList);
 
-      const residentsData = await api.get<Resident[]>(`/residents?${queryParams.toString()}`);
-      setResidents(residentsData);
-
-      // Cargar inmuebles para el selector
-      const propertiesData = await api.get<Property[]>('/properties');
-      setProperties(propertiesData);
+      // 2. Cargar inmuebles de este Tenant para el selector
+      const propertiesQuery = query(
+        collection(db, 'properties'),
+        where('tenantId', '==', user.tenantId)
+      );
+      const propertiesSnap = await getDocs(propertiesQuery);
+      const propertiesList: Property[] = [];
+      propertiesSnap.forEach((doc) => {
+        const data = doc.data();
+        propertiesList.push({
+          id: doc.id,
+          tower: data.tower || '',
+          unit: data.unit || '',
+        });
+      });
+      setProperties(propertiesList);
     } catch (err: any) {
-      setError(err.message || 'Error al cargar residentes.');
+      console.error(err);
+      setError(err.message || 'Error al conectar con Firestore.');
     } finally {
       setLoading(false);
     }
@@ -92,7 +130,7 @@ export default function ResidentsPage() {
 
   useEffect(() => {
     loadData();
-  }, [filterTower, filterUnit, filterStatus]);
+  }, [user]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,20 +139,39 @@ export default function ResidentsPage() {
       return;
     }
 
+    if (!user?.tenantId) return;
+
     setIsSubmitting(true);
     setFormError(null);
 
     try {
-      await api.post('/residents', {
+      let linkedProperties: ResidentProperty[] = [];
+      
+      if (selectedPropertyId) {
+        const prop = properties.find((p) => p.id === selectedPropertyId);
+        if (prop) {
+          linkedProperties.push({
+            id: prop.id,
+            tower: prop.tower,
+            unit: prop.unit,
+          });
+        }
+      }
+
+      // Crear en Firestore
+      await addDoc(collection(db, 'residents'), {
         firstName,
         lastName,
         document,
         email,
-        phone: phone || undefined,
-        propertyId: selectedPropertyId || undefined,
+        phone,
+        status: 'ACTIVE',
+        tenantId: user.tenantId,
+        properties: linkedProperties,
+        createdAt: new Date(),
       });
 
-      // Limpiar campos
+      // Limpiar formulario
       setFirstName('');
       setLastName('');
       setDocument('');
@@ -123,10 +180,9 @@ export default function ResidentsPage() {
       setSelectedPropertyId('');
       setIsCreateOpen(false);
 
-      // Recargar datos
       await loadData();
     } catch (err: any) {
-      setFormError(err.message || 'Error al crear residente.');
+      setFormError(err.message || 'Error al guardar el residente.');
     } finally {
       setIsSubmitting(false);
     }
@@ -135,10 +191,11 @@ export default function ResidentsPage() {
   const handleToggleStatus = async (id: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     try {
-      await api.put(`/residents/${id}`, { status: nextStatus });
+      const residentRef = doc(db, 'residents', id);
+      await updateDoc(residentRef, { status: nextStatus });
       await loadData();
     } catch (err: any) {
-      alert(`Error al cambiar estado: ${err.message}`);
+      alert(`Error al actualizar estado: ${err.message}`);
     }
   };
 
@@ -147,12 +204,26 @@ export default function ResidentsPage() {
       return;
     }
     try {
-      await api.delete(`/residents/${id}`);
+      const residentRef = doc(db, 'residents', id);
+      await updateDoc(residentRef, { status: 'INACTIVE' });
       await loadData();
     } catch (err: any) {
-      alert(`Error al eliminar: ${err.message}`);
+      alert(`Error al desactivar: ${err.message}`);
     }
   };
+
+  // Filtrado local para búsqueda fluida en tiempo real
+  const filteredResidents = residents.filter((resident) => {
+    const matchStatus = filterStatus ? resident.status === filterStatus : true;
+    const matchTower = filterTower
+      ? resident.properties.some((p) => p.tower.toLowerCase().includes(filterTower.toLowerCase()))
+      : true;
+    const matchUnit = filterUnit
+      ? resident.properties.some((p) => p.unit.toLowerCase().includes(filterUnit.toLowerCase()))
+      : true;
+
+    return matchStatus && matchTower && matchUnit;
+  });
 
   return (
     <div className="space-y-6 pb-12">
@@ -164,7 +235,7 @@ export default function ResidentsPage() {
             <span>Módulo de Residentes</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Gestión completa de copropietarios e inquilinos registrados en el conjunto.
+            Gestión de copropietarios e inquilinos registrados (Base de datos Firestore).
           </p>
         </div>
 
@@ -180,7 +251,7 @@ export default function ResidentsPage() {
         </button>
       </div>
 
-      {/* Filters Panel */}
+      {/* Filters */}
       <div className="p-4 rounded-2xl border border-slate-900 bg-slate-900/20 grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1.5">Torre</label>
@@ -216,17 +287,17 @@ export default function ResidentsPage() {
         </div>
       </div>
 
-      {/* Main Table Content */}
+      {/* List */}
       {loading ? (
         <div className="h-64 flex flex-col items-center justify-center">
           <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mb-3" />
-          <p className="text-xs text-slate-500">Cargando residentes...</p>
+          <p className="text-xs text-slate-500">Cargando residentes desde Cloud Firestore...</p>
         </div>
       ) : error ? (
         <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-sm">
           {error}
         </div>
-      ) : residents.length === 0 ? (
+      ) : filteredResidents.length === 0 ? (
         <div className="p-10 border border-dashed border-slate-800 rounded-2xl text-center">
           <p className="text-sm text-slate-500">No se encontraron residentes con los filtros especificados.</p>
         </div>
@@ -245,7 +316,7 @@ export default function ResidentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/40">
-                {residents.map((resident) => (
+                {filteredResidents.map((resident) => (
                   <tr key={resident.id} className="hover:bg-slate-900/10 transition-colors">
                     <td className="py-3.5 px-4 font-bold text-slate-200">
                       {resident.firstName} {resident.lastName}
@@ -262,7 +333,7 @@ export default function ResidentsPage() {
                             key={pIdx}
                             className="inline-flex px-2 py-0.5 text-[10px] font-semibold text-slate-300 bg-slate-800 rounded-full border border-slate-700/60 mr-1"
                           >
-                            {p.property.tower} - {p.property.unit}
+                            {p.tower} - {p.unit}
                           </span>
                         ))
                       ) : (
@@ -295,14 +366,12 @@ export default function ResidentsPage() {
                       <div className="flex items-center justify-end space-x-2">
                         <button
                           onClick={() => handleToggleStatus(resident.id, resident.status)}
-                          title={resident.status === 'ACTIVE' ? 'Desactivar' : 'Activar'}
                           className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-200 transition-colors"
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(resident.id)}
-                          title="Eliminar Lógico"
                           className="p-1.5 hover:bg-red-500/10 rounded-lg text-slate-500 hover:text-red-400 transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -317,11 +386,10 @@ export default function ResidentsPage() {
         </div>
       )}
 
-      {/* Modal - Agregar Residente */}
+      {/* Create Modal */}
       <AnimatePresence>
         {isCreateOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -329,8 +397,6 @@ export default function ResidentsPage() {
               onClick={() => setIsCreateOpen(false)}
               className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
             />
-
-            {/* Modal Box */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -339,7 +405,7 @@ export default function ResidentsPage() {
             >
               <h3 className="text-lg font-bold text-slate-100 mb-2">Agregar Nuevo Residente</h3>
               <p className="text-xs text-slate-500 mb-6">
-                Complete el formulario para dar de alta un residente y asociarlo a un inmueble.
+                Llene el formulario para registrar un nuevo habitante directamente en Firestore.
               </p>
 
               {formError && (

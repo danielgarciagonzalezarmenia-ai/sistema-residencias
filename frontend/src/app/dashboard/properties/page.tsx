@@ -1,35 +1,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { api } from '../../../lib/api';
+import { db } from '../../../lib/firebase';
+import { useAuth } from '../../../context/AuthContext';
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+} from 'firebase/firestore';
 import {
   Building,
   Plus,
   Loader2,
-  TrendingUp,
-  Receipt,
-  UserCheck,
   Building2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-interface Owner {
-  firstName: string;
-  lastName: string;
-  phone: string | null;
-}
-
-interface ResidentRelation {
-  resident: {
-    firstName: string;
-    lastName: string;
-  };
-  isPrimary: boolean;
-}
-
-interface Wallet {
-  balance: number;
-}
 
 interface Property {
   id: string;
@@ -38,12 +25,22 @@ interface Property {
   type: string;
   area: number;
   coefficient: number;
-  owner: Owner | null;
-  wallet: Wallet | null;
-  residents: ResidentRelation[];
+  tenantId: string;
+  owner: {
+    firstName: string;
+    lastName: string;
+  } | null;
+  wallet: {
+    balance: number;
+  } | null;
+  residents: {
+    firstName: string;
+    lastName: string;
+  }[];
 }
 
 export default function PropertiesPage() {
+  const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,13 +58,43 @@ export default function PropertiesPage() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const loadProperties = async () => {
+    if (!user?.tenantId) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get<Property[]>('/properties');
-      setProperties(data);
+      const q = query(
+        collection(db, 'properties'),
+        where('tenantId', '==', user.tenantId)
+      );
+      const snap = await getDocs(q);
+      const list: Property[] = [];
+      snap.forEach((doc) => {
+        const data = doc.data();
+        list.push({
+          id: doc.id,
+          tower: data.tower || '',
+          unit: data.unit || '',
+          type: data.type || 'apartamento',
+          area: Number(data.area || 0),
+          coefficient: Number(data.coefficient || 0),
+          tenantId: data.tenantId || '',
+          owner: data.owner || null,
+          wallet: data.wallet || { balance: 0 },
+          residents: data.residents || [],
+        });
+      });
+      
+      // Ordenar localmente por torre y unidad para presentarlo ordenado
+      list.sort((a, b) => {
+        const towerCompare = a.tower.localeCompare(b.tower);
+        if (towerCompare !== 0) return towerCompare;
+        return a.unit.localeCompare(b.unit);
+      });
+
+      setProperties(list);
     } catch (err: any) {
-      setError(err.message || 'Error al cargar inmuebles.');
+      console.error(err);
+      setError(err.message || 'Error al conectar con Firestore.');
     } finally {
       setLoading(false);
     }
@@ -75,7 +102,7 @@ export default function PropertiesPage() {
 
   useEffect(() => {
     loadProperties();
-  }, []);
+  }, [user]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,19 +111,29 @@ export default function PropertiesPage() {
       return;
     }
 
+    if (!user?.tenantId) return;
+
     setIsSubmitting(true);
     setFormError(null);
 
     try {
-      await api.post('/properties', {
+      // Agregar documento de inmueble directamente con billetera vacía
+      await addDoc(collection(db, 'properties'), {
         tower,
         unit,
         type,
         area: parseFloat(area),
         coefficient: parseFloat(coefficient),
+        tenantId: user.tenantId,
+        owner: null, // Asignable en posteriores iteraciones
+        wallet: {
+          balance: 0.0, // Inicia al día
+        },
+        residents: [],
+        createdAt: new Date(),
       });
 
-      // Limpiar campos
+      // Limpiar formulario
       setTower('');
       setUnit('');
       setType('apartamento');
@@ -104,10 +141,9 @@ export default function PropertiesPage() {
       setCoefficient('');
       setIsCreateOpen(false);
 
-      // Recargar datos
       await loadProperties();
     } catch (err: any) {
-      setFormError(err.message || 'Error al crear inmueble.');
+      setFormError(err.message || 'Error al guardar el inmueble.');
     } finally {
       setIsSubmitting(false);
     }
@@ -123,7 +159,7 @@ export default function PropertiesPage() {
             <span>Módulo de Inmuebles</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Visualización y alta de apartamentos, casas, locales u oficinas y sus saldos de cartera.
+            Administración de propiedades y saldos de administración (Cloud Firestore).
           </p>
         </div>
 
@@ -143,7 +179,7 @@ export default function PropertiesPage() {
       {loading ? (
         <div className="h-64 flex flex-col items-center justify-center">
           <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mb-3" />
-          <p className="text-xs text-slate-500">Cargando inmuebles...</p>
+          <p className="text-xs text-slate-500">Cargando inmuebles desde Cloud Firestore...</p>
         </div>
       ) : error ? (
         <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-sm">
@@ -156,9 +192,9 @@ export default function PropertiesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {properties.map((prop) => {
-            const primaryResident = prop.residents.find(r => r.isPrimary)?.resident;
             const balance = prop.wallet?.balance ?? 0;
             const hasDebt = balance > 0;
+            const primaryResident = prop.residents.length > 0 ? prop.residents[0] : null;
 
             return (
               <motion.div
@@ -227,7 +263,6 @@ export default function PropertiesPage() {
       <AnimatePresence>
         {isCreateOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -235,8 +270,6 @@ export default function PropertiesPage() {
               onClick={() => setIsCreateOpen(false)}
               className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
             />
-
-            {/* Modal Box */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -245,7 +278,7 @@ export default function PropertiesPage() {
             >
               <h3 className="text-lg font-bold text-slate-100 mb-2">Agregar Nuevo Inmueble</h3>
               <p className="text-xs text-slate-500 mb-6">
-                Cree un inmueble en el conjunto. Se inicializará su saldo de cartera en $0 automáticamente.
+                Cree un inmueble en el conjunto. Se creará con saldo en ceros automáticamente.
               </p>
 
               {formError && (
