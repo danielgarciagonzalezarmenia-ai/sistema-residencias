@@ -73,6 +73,7 @@ export default function ResidentsPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
+  const [propertyRole, setPropertyRole] = useState<'owner' | 'inhabitant'>('owner');
   const [formError, setFormError] = useState<string | null>(null);
 
   const loadData = async () => {
@@ -159,7 +160,7 @@ export default function ResidentsPage() {
       }
 
       // Crear en Firestore
-      await addDoc(collection(db, 'residents'), {
+      const docRef = await addDoc(collection(db, 'residents'), {
         firstName,
         lastName,
         document,
@@ -171,6 +172,16 @@ export default function ResidentsPage() {
         createdAt: new Date(),
       });
 
+      // Si se seleccionó inmueble, actualizar el inmueble correspondiente
+      if (selectedPropertyId) {
+        const name = `${firstName} ${lastName}`;
+        const updateData = propertyRole === 'owner'
+          ? { ownerId: docRef.id, ownerName: name, status: 'OCCUPIED' }
+          : { inhabitantId: docRef.id, inhabitantName: name, status: 'OCCUPIED' };
+        
+        await updateDoc(doc(db, 'properties', selectedPropertyId), updateData);
+      }
+
       // Limpiar formulario
       setFirstName('');
       setLastName('');
@@ -178,6 +189,7 @@ export default function ResidentsPage() {
       setEmail('');
       setPhone('');
       setSelectedPropertyId('');
+      setPropertyRole('owner');
       setIsCreateOpen(false);
 
       await loadData();
@@ -476,20 +488,36 @@ export default function ResidentsPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs text-zinc-400 mb-1.5">Asociar a Inmueble</label>
-                  <select
-                    value={selectedPropertyId}
-                    onChange={(e) => setSelectedPropertyId(e.target.value)}
-                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-300 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
-                  >
-                    <option value="">-- No asociar de inmediato --</option>
-                    {properties.map((prop) => (
-                      <option key={prop.id} value={prop.id}>
-                        {prop.tower} - {prop.unit}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Asociar a Inmueble</label>
+                    <select
+                      value={selectedPropertyId}
+                      onChange={(e) => setSelectedPropertyId(e.target.value)}
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-300 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
+                    >
+                      <option value="">-- No asociar de inmediato --</option>
+                      {properties.map((prop) => (
+                        <option key={prop.id} value={prop.id}>
+                          {prop.tower} - {prop.unit}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedPropertyId && (
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1.5">Rol en el Inmueble</label>
+                      <select
+                        value={propertyRole}
+                        onChange={(e) => setPropertyRole(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-350 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
+                      >
+                        <option value="owner">Propietario</option>
+                        <option value="inhabitant">Habitante / Arrendatario</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-end space-x-3 pt-4 border-t border-zinc-850">

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../context/AuthContext";
@@ -13,6 +13,13 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "ResidentePro | Administración Residencial Inteligente",
   description: "Plataforma SaaS para la administración inteligente de conjuntos residenciales.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

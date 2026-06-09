@@ -518,6 +518,243 @@ function ResidentDashboard() {
   );
 }
 
+// ─── DASHBOARD PORTERÍA ───────────────────────────────────────────────────
+function PorterDashboard() {
+  const { user } = useAuth();
+  const [stats, setStats] = useState({
+    pendingPkgs: 0,
+    insideVisitors: 0,
+    logsCount: 0,
+  });
+  const [recentInside, setRecentInside] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.tenantId) return;
+    const fetchPorterStats = async () => {
+      setLoading(true);
+      try {
+        const tid = user.tenantId;
+
+        // Query packages pending
+        const pkgSnap = await getDocs(query(
+          collection(db, 'packages'),
+          where('tenantId', '==', tid),
+          where('status', '==', 'PENDING')
+        ));
+
+        // Query visitors inside
+        const visSnap = await getDocs(query(
+          collection(db, 'visitors'),
+          where('tenantId', '==', tid),
+          where('status', '==', 'INSIDE')
+        ));
+
+        // Query logs
+        const logSnap = await getDocs(query(
+          collection(db, 'gatehouse_logs'),
+          where('tenantId', '==', tid)
+        ));
+
+        setStats({
+          pendingPkgs: pkgSnap.size,
+          insideVisitors: visSnap.size,
+          logsCount: logSnap.size,
+        });
+
+        // 3 recent visitors inside
+        const insideList: any[] = [];
+        visSnap.forEach((d) => {
+          const data = d.data();
+          insideList.push({
+            id: d.id,
+            name: data.name || '',
+            document: data.document || '',
+            plate: data.plate || '',
+            destinationName: data.destinationName || '',
+            destinationUnit: data.destinationUnit || '',
+            destinationTower: data.destinationTower || '',
+            entryTime: data.entryTime,
+          });
+        });
+        insideList.sort((a, b) => {
+          const ta = a.entryTime?.seconds || 0;
+          const tb = b.entryTime?.seconds || 0;
+          return tb - ta;
+        });
+        setRecentInside(insideList.slice(0, 3));
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPorterStats();
+  }, [user]);
+
+  const handleQuickExit = async (visId: string) => {
+    try {
+      const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'visitors', visId), {
+        status: 'LEFT',
+        exitTime: serverTimestamp(),
+      });
+      // Refresh
+      setRecentInside((prev) => prev.filter((v) => v.id !== visId));
+      setStats((prev) => ({ ...prev, insideVisitors: Math.max(0, prev.insideVisitors - 1) }));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const formatTime = (ts: any) => {
+    if (!ts?.seconds) return '—';
+    return new Date(ts.seconds * 1000).toLocaleTimeString('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  return (
+    <div className="space-y-8 pb-8 font-sans">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100">
+          Bienvenido, {user?.firstName} 👋
+        </h1>
+        <p className="text-sm text-zinc-500 mt-1 font-medium">
+          Panel de Vigilancia y Portería · {new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </p>
+      </div>
+
+      {/* Stats */}
+      {loading ? (
+        <div className="grid grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-28 rounded-2xl bg-zinc-900/40 border border-zinc-800/40 animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="p-5 rounded-2xl border border-amber-500/20 bg-amber-500/5 flex flex-col justify-between">
+            <span className="p-2 rounded-xl bg-zinc-950/40 text-amber-400 w-fit">
+              <Package className="h-5 w-5" />
+            </span>
+            <div className="mt-4">
+              <p className="text-2xl sm:text-3xl font-bold text-zinc-100">{stats.pendingPkgs}</p>
+              <p className="text-xs text-zinc-500 font-medium mt-0.5">Paquetes Pendientes</p>
+            </div>
+          </div>
+
+          <div className="p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 flex flex-col justify-between">
+            <span className="p-2 rounded-xl bg-zinc-950/40 text-emerald-400 w-fit">
+              <Users className="h-5 w-5" />
+            </span>
+            <div className="mt-4">
+              <p className="text-2xl sm:text-3xl font-bold text-zinc-100">{stats.insideVisitors}</p>
+              <p className="text-xs text-zinc-500 font-medium mt-0.5">Visitantes Adentro</p>
+            </div>
+          </div>
+
+          <div className="p-5 rounded-2xl border border-zinc-700/40 bg-zinc-900/20 flex flex-col justify-between">
+            <span className="p-2 rounded-xl bg-zinc-950/40 text-zinc-300 w-fit">
+              <ClipboardList className="h-5 w-5" />
+            </span>
+            <div className="mt-4">
+              <p className="text-2xl sm:text-3xl font-bold text-zinc-100">{stats.logsCount}</p>
+              <p className="text-xs text-zinc-500 font-medium mt-0.5">Novedades Registradas</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main grids */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Visitantes Adentro */}
+        <div className="lg:col-span-2 p-5 rounded-2xl border border-zinc-800/60 bg-zinc-900/20">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="font-bold text-zinc-200 text-sm">Visitantes en el Conjunto</h3>
+              <p className="text-xs text-zinc-500 mt-0.5">Personas registradas actualmente adentro</p>
+            </div>
+            <Link href="/dashboard/gatehouse" className="text-xs font-semibold text-violet-400 hover:text-violet-300 flex items-center space-x-1">
+              <span>Gestionar todos</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-16 bg-zinc-950/40 border border-zinc-900/50 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : recentInside.length === 0 ? (
+            <div className="py-10 text-center border border-dashed border-zinc-800 rounded-xl">
+              <Users className="h-8 w-8 text-zinc-700 mx-auto mb-2" />
+              <p className="text-xs text-zinc-500">No hay visitantes adentro ahora</p>
+              <Link href="/dashboard/gatehouse" className="text-xs text-violet-400 font-semibold underline mt-1 inline-block">
+                Registrar nuevo ingreso
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentInside.map((vis) => (
+                <div key={vis.id} className="p-4 bg-zinc-950/50 rounded-xl border border-zinc-800/40 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-zinc-200">{vis.name}</p>
+                    <p className="text-[11px] text-zinc-500 mt-0.5">
+                      Visita a: <span className="font-medium text-zinc-400">{vis.destinationName}</span> ({vis.destinationTower} {vis.destinationUnit})
+                    </p>
+                    {vis.plate && <p className="text-[10px] text-zinc-500 mt-0.5">Placa: {vis.plate}</p>}
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <span className="text-[10px] text-zinc-500 font-medium font-mono">Entrada: {formatTime(vis.entryTime)}</span>
+                    <button
+                      onClick={() => handleQuickExit(vis.id)}
+                      className="inline-flex items-center space-x-1 px-3 py-1.5 text-[10px] font-bold bg-zinc-850 hover:bg-zinc-800 text-zinc-350 border border-zinc-800 rounded-xl transition-all"
+                    >
+                      Registrar Salida
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Accesos Rápidos */}
+        <div className="p-5 rounded-2xl border border-zinc-800/60 bg-zinc-900/20 space-y-4">
+          <h3 className="font-bold text-zinc-200 text-sm">Accesos Directos</h3>
+          <div className="grid grid-cols-1 gap-2.5">
+            <Link
+              href="/dashboard/gatehouse"
+              className="p-4 rounded-xl border border-violet-500/20 bg-violet-600/5 hover:bg-violet-600/10 text-left transition-all flex items-center justify-between group"
+            >
+              <div>
+                <p className="text-xs font-bold text-zinc-200">Panel de Portería</p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">Gestionar paquetes, visitas y novedades</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-zinc-500 group-hover:text-violet-400 transition-colors" />
+            </Link>
+
+            <Link
+              href="/dashboard/gatehouse"
+              className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/40 hover:border-zinc-700 text-left transition-all flex items-center justify-between group"
+            >
+              <div>
+                <p className="text-xs font-bold text-zinc-200">Buscar Vivienda / Residente</p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">Consultar datos de contacto y visitas</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── PÁGINA PRINCIPAL (SELECTOR DE ROL) ──────────────────────────────────
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -525,5 +762,6 @@ export default function DashboardPage() {
   if (!user) return null;
 
   if (user.role === 'RESIDENTE') return <ResidentDashboard />;
+  if (user.role === 'PORTERÍA') return <PorterDashboard />;
   return <AdminDashboard />;
 }

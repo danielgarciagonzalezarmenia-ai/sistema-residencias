@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '../../../lib/firebase';
 import { useAuth } from '../../../context/AuthContext';
 import {
-  collection, query, where, getDocs, addDoc, doc, updateDoc, writeBatch, serverTimestamp,
+  collection, query, where, getDocs, getDoc, addDoc, doc, updateDoc, writeBatch, serverTimestamp,
 } from 'firebase/firestore';
 import {
   Building, Home, Plus, Loader2, Users, ChevronRight, ArrowLeft,
@@ -617,19 +617,48 @@ export default function PropertiesPage() {
 
       await updateDoc(doc(db, 'properties', propId), { ...updateData, status });
 
+      // Sincronizar en Colección 'residents'
+      // 1. Quitar el inmueble del antiguo residente asignado en ese campo
+      const oldId = field === 'owner' ? prop.ownerId : prop.inhabitantId;
+      if (oldId && oldId !== id) {
+        const residentRef = doc(db, 'residents', oldId);
+        const residentSnap = await getDoc(residentRef);
+        if (residentSnap.exists()) {
+          const resData = residentSnap.data();
+          const currentProps = resData.properties || [];
+          const updatedProps = currentProps.filter((p: any) => p.id !== propId);
+          await updateDoc(residentRef, { properties: updatedProps });
+        }
+      }
+
+      // 2. Agregar el inmueble al nuevo residente asignado
+      if (id) {
+        const residentRef = doc(db, 'residents', id);
+        const residentSnap = await getDoc(residentRef);
+        if (residentSnap.exists()) {
+          const resData = residentSnap.data();
+          const currentProps = resData.properties || [];
+          const alreadyLinked = currentProps.some((p: any) => p.id === propId);
+          if (!alreadyLinked) {
+            const updatedProps = [...currentProps, { id: propId, tower: prop.tower, unit: prop.unit }];
+            await updateDoc(residentRef, { properties: updatedProps });
+          }
+        }
+      }
+
       setProperties(prev =>
-        prev.map(p =>
-          p.id === propId
-            ? {
-                ...p,
-                ownerId: field === 'owner' ? id : p.ownerId,
-                ownerName: field === 'owner' ? name : p.ownerName,
-                inhabitantId: field === 'inhabitant' ? id : p.inhabitantId,
-                inhabitantName: field === 'inhabitant' ? name : p.inhabitantName,
-                status,
-              }
-            : p
-        )
+         prev.map(p =>
+           p.id === propId
+             ? {
+                 ...p,
+                 ownerId: field === 'owner' ? id : p.ownerId,
+                 ownerName: field === 'owner' ? name : p.ownerName,
+                 inhabitantId: field === 'inhabitant' ? id : p.inhabitantId,
+                 inhabitantName: field === 'inhabitant' ? name : p.inhabitantName,
+                 status,
+               }
+             : p
+         )
       );
     } catch (e) { console.error(e); }
     finally { setSavingId(null); }

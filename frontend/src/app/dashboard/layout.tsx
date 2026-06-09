@@ -47,8 +47,17 @@ interface NotificationItem {
   createdAt: any;
 }
 
+interface MenuItem {
+  name: string;
+  href: string;
+  icon: React.ReactNode;
+  roles: string[];
+  exact?: boolean;
+  comingSoon?: boolean;
+}
+
 // Definición de items de menú con control de roles
-const ALL_MENU_ITEMS = [
+const ALL_MENU_ITEMS: MenuItem[] = [
   {
     name: 'Inicio',
     href: '/dashboard',
@@ -78,15 +87,13 @@ const ALL_MENU_ITEMS = [
     name: 'PQRS',
     href: '/dashboard/pqrs',
     icon: <ClipboardList className="h-5 w-5" />,
-    roles: ['ADMINISTRADOR', 'RESIDENTE'],
-    comingSoon: true,
+    roles: ['ADMINISTRADOR', 'RESIDENTE', 'PORTERÍA'],
   },
   {
     name: 'Reservas',
     href: '/dashboard/reservations',
     icon: <CalendarDays className="h-5 w-5" />,
-    roles: ['ADMINISTRADOR', 'RESIDENTE'],
-    comingSoon: true,
+    roles: ['ADMINISTRADOR', 'RESIDENTE', 'PORTERÍA'],
   },
   {
     name: 'Portería',

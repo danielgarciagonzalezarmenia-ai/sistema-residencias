@@ -84,9 +84,21 @@ interface LogRecord {
   createdAt: any;
 }
 
+interface Property {
+  id: string;
+  tower: string;
+  unit: string;
+  ownerName: string | null;
+  ownerId: string | null;
+  inhabitantName: string | null;
+  inhabitantId: string | null;
+  status: string;
+}
+
 const TABS = [
   { key: 'packages', label: 'Paquetes', icon: <Package className="h-4 w-4" /> },
   { key: 'visitors', label: 'Visitantes', icon: <Users className="h-4 w-4" /> },
+  { key: 'properties', label: 'Inmuebles', icon: <Building className="h-4 w-4" /> },
   { key: 'log',      label: 'Novedades', icon: <BookOpen className="h-4 w-4" /> },
 ];
 
@@ -98,11 +110,19 @@ const CARRIERS = [
 // ─── COMPONENTE PRINCIPAL ──────────────────────────────────────────────────
 export default function GatehousePage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'packages' | 'visitors' | 'log'>('packages');
+  const [activeTab, setActiveTab] = useState<'packages' | 'visitors' | 'log' | 'properties'>('packages');
 
   // Datos compartidos
   const [residents, setResidents] = useState<ResidentOption[]>([]);
   const [loadingResidents, setLoadingResidents] = useState(true);
+
+  // Inmuebles (Buscador portería)
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loadingProperties, setLoadingProperties] = useState(false);
+  const [propSearch, setPropSearch] = useState('');
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [selectedPropVisitors, setSelectedPropVisitors] = useState<VisitorRecord[]>([]);
+  const [loadingPropVisitors, setLoadingPropVisitors] = useState(false);
 
   // Paquetes
   const [packages, setPackages] = useState<PackageRecord[]>([]);
@@ -233,7 +253,75 @@ export default function GatehousePage() {
     finally { setLoadingVis(false); }
   };
 
-  // ── Cargar Novedades ─────────────────────────────────────────────────────
+  // ── Cargar Inmuebles ─────────────────────────────────────────────────────
+  const loadProperties = async () => {
+    if (!user?.tenantId) return;
+    setLoadingProperties(true);
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'properties'),
+        where('tenantId', '==', user.tenantId)
+      ));
+      const list: Property[] = [];
+      snap.forEach(d => {
+        const data = d.data();
+        list.push({
+          id: d.id,
+          tower: data.tower || '',
+          unit: data.unit || '',
+          ownerName: data.ownerName || null,
+          ownerId: data.ownerId || null,
+          inhabitantName: data.inhabitantName || null,
+          inhabitantId: data.inhabitantId || null,
+          status: data.status || 'VACANT',
+        });
+      });
+      list.sort((a, b) => {
+        if (a.tower !== b.tower) return a.tower.localeCompare(b.tower);
+        return a.unit.localeCompare(b.unit, undefined, { numeric: true });
+      });
+      setProperties(list);
+    } catch (e) { console.error(e); }
+    finally { setLoadingProperties(false); }
+  };
+
+  const handleSelectProperty = async (prop: Property) => {
+    setSelectedProperty(prop);
+    setLoadingPropVisitors(true);
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'visitors'),
+        where('tenantId', '==', user?.tenantId),
+        where('destinationTower', '==', prop.tower),
+        where('destinationUnit', '==', prop.unit)
+      ));
+      const list: VisitorRecord[] = [];
+      snap.forEach(d => {
+        const data = d.data();
+        list.push({
+          id: d.id,
+          name: data.name || '',
+          document: data.document || '',
+          plate: data.plate || '',
+          destinationName: data.destinationName || '',
+          destinationUnit: data.destinationUnit || '',
+          destinationTower: data.destinationTower || '',
+          entryTime: data.entryTime,
+          exitTime: data.exitTime || null,
+          status: data.status || 'INSIDE',
+          registeredBy: data.registeredBy || '',
+        });
+      });
+      list.sort((a, b) => {
+        const ta = a.entryTime?.seconds ?? 0;
+        const tb = b.entryTime?.seconds ?? 0;
+        return tb - ta;
+      });
+      setSelectedPropVisitors(list);
+    } catch (e) { console.error(e); }
+    finally { setLoadingPropVisitors(false); }
+  };
+
   const loadLogs = async () => {
     if (!user?.tenantId) return;
     setLoadingLog(true);
@@ -260,6 +348,7 @@ export default function GatehousePage() {
   useEffect(() => {
     if (activeTab === 'packages') loadPackages();
     else if (activeTab === 'visitors') loadVisitors();
+    else if (activeTab === 'properties') loadProperties();
     else loadLogs();
   }, [activeTab, user]);
 
@@ -631,6 +720,146 @@ export default function GatehousePage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── TAB: INMUEBLES ──────────────────────────────────────────────── */}
+      {activeTab === 'properties' && (
+        <div className="space-y-4">
+          <p className="text-xs text-zinc-500 font-medium font-sans">Búsqueda rápida de viviendas, residentes y registro de visitantes.</p>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Lista y Buscador */}
+            <div className="lg:col-span-1 space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Buscar torre, apto, dueño..."
+                  value={propSearch}
+                  onChange={e => setPropSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-zinc-950/70 border border-zinc-800 rounded-xl text-zinc-200 placeholder-zinc-600 text-xs focus:outline-none focus:border-violet-500/70"
+                />
+              </div>
+
+              {loadingProperties ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 text-violet-500 animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">
+                  {properties.filter(p => 
+                    p.tower.toLowerCase().includes(propSearch.toLowerCase()) ||
+                    p.unit.toLowerCase().includes(propSearch.toLowerCase()) ||
+                    (p.ownerName || '').toLowerCase().includes(propSearch.toLowerCase()) ||
+                    (p.inhabitantName || '').toLowerCase().includes(propSearch.toLowerCase())
+                  ).map(prop => {
+                    const isSel = selectedProperty?.id === prop.id;
+                    return (
+                      <div
+                        key={prop.id}
+                        onClick={() => handleSelectProperty(prop)}
+                        className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                          isSel
+                            ? 'bg-violet-600/15 border-violet-500/40 text-violet-200 shadow-md shadow-violet-600/5'
+                            : 'bg-zinc-900/10 border-zinc-800/80 hover:border-zinc-700/60'
+                        }`}
+                      >
+                        <p className="text-xs font-bold text-zinc-200">{prop.tower} - {prop.unit}</p>
+                        <p className="text-[10px] text-zinc-500 mt-1 truncate">
+                          Dueño: <span className="text-zinc-400 font-medium">{prop.ownerName || 'Sin asignar'}</span>
+                        </p>
+                        {prop.inhabitantName && (
+                          <p className="text-[10px] text-zinc-500 truncate">
+                            Inquilino: <span className="text-zinc-400 font-medium">{prop.inhabitantName}</span>
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Detalles de la propiedad y visitantes */}
+            <div className="lg:col-span-2">
+              {selectedProperty ? (
+                <div className="p-5 rounded-2xl border border-zinc-800 bg-zinc-900/15 space-y-5">
+                  <div className="pb-3 border-b border-zinc-800/80 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-zinc-100">{selectedProperty.tower} - {selectedProperty.unit}</h3>
+                      <p className="text-[10px] text-zinc-500 mt-0.5 capitalize">Estado: {selectedProperty.status === 'OCCUPIED' ? 'Ocupado' : 'Vacío'}</p>
+                    </div>
+                  </div>
+
+                  {/* Propietario & Habitante */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-3.5 bg-zinc-950/60 border border-zinc-850 rounded-xl">
+                      <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wider mb-2">👤 Propietario Registrado</p>
+                      {selectedProperty.ownerName ? (
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold text-zinc-200">{selectedProperty.ownerName}</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-zinc-650 italic">Sin propietario asignado</p>
+                      )}
+                    </div>
+
+                    <div className="p-3.5 bg-zinc-950/60 border border-zinc-850 rounded-xl">
+                      <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wider mb-2">🏠 Habitante / Inquilino</p>
+                      {selectedProperty.inhabitantName ? (
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold text-zinc-200">{selectedProperty.inhabitantName}</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-zinc-650 italic">El propietario reside aquí</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Historial de Visitantes */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center space-x-1.5">
+                      <span>Historial de Visitantes</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 text-zinc-500 rounded-full">
+                        {selectedPropVisitors.length}
+                      </span>
+                    </h4>
+
+                    {loadingPropVisitors ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-5 w-5 text-violet-500 animate-spin" />
+                      </div>
+                    ) : selectedPropVisitors.length === 0 ? (
+                      <p className="text-xs text-zinc-600 italic py-6 text-center border border-dashed border-zinc-850 rounded-xl">No hay registros de visitantes para esta vivienda.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        {selectedPropVisitors.map(vis => (
+                          <div key={vis.id} className="p-3 bg-zinc-950/40 border border-zinc-850 rounded-xl flex items-center justify-between text-xs gap-3">
+                            <div>
+                              <p className="font-bold text-zinc-350">{vis.name}</p>
+                              {vis.document && <p className="text-[10px] text-zinc-550">Documento: {vis.document}</p>}
+                              {vis.plate && <p className="text-[10px] text-zinc-550">Vehículo: {vis.plate}</p>}
+                            </div>
+                            <div className="text-right text-[10px] text-zinc-600 space-y-0.5 font-medium">
+                              <p>Ingreso: {formatTime(vis.entryTime)}</p>
+                              {vis.exitTime ? <p>Salida: {formatTime(vis.exitTime)}</p> : <p className="text-emerald-400 font-semibold">Adentro</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="h-64 border-2 border-dashed border-zinc-850 rounded-2xl flex flex-col items-center justify-center text-center p-6 text-zinc-500">
+                  <Building className="h-8 w-8 text-zinc-800 mb-2" />
+                  <p className="text-xs font-semibold">Ninguna vivienda seleccionada</p>
+                  <p className="text-[10px] text-zinc-650 mt-1">Selecciona una vivienda de la lista para ver su información y visitantes.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

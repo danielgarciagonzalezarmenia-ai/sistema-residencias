@@ -220,15 +220,6 @@ export default function LoginPage() {
             Regístrate aquí
           </Link>
         </p>
-
-        {/* Demo credentials hint */}
-        <div className="mt-6 p-4 border border-zinc-800/80 bg-zinc-900/20 rounded-2xl text-xs text-zinc-400 leading-relaxed">
-          <p className="font-bold text-zinc-300 mb-1">Cuentas de demostración:</p>
-          <ul className="space-y-1 list-disc list-inside">
-            <li>Administración: <code className="text-violet-300">admin@acacias.com</code> / <code className="text-violet-300">password123</code></li>
-            <li>Vigilancia (Portería): <code className="text-violet-300">porteria@acacias.com</code> / <code className="text-violet-300">password123</code></li>
-          </ul>
-        </div>
       </motion.div>
     </div>
   );
