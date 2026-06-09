@@ -757,11 +757,13 @@ function PorterDashboard() {
 
 // ─── PÁGINA PRINCIPAL (SELECTOR DE ROL) ──────────────────────────────────
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
 
   if (!user) return null;
 
-  if (user.role === 'RESIDENTE') return <ResidentDashboard />;
-  if (user.role === 'PORTERÍA') return <PorterDashboard />;
+  const currentRole = activeRole || user.role;
+
+  if (currentRole === 'RESIDENTE') return <ResidentDashboard />;
+  if (currentRole === 'PORTERÍA') return <PorterDashboard />;
   return <AdminDashboard />;
 }

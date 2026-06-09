@@ -22,16 +22,19 @@ interface UserProfile {
 
 interface AuthContextType {
   user: UserProfile | null;
+  activeRole: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  switchRole: (role: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [activeRole, setActiveRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -46,24 +49,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (userDocSnap.exists()) {
             const data = userDocSnap.data();
+            const baseRole = data.role || 'RESIDENTE';
+
+            // Determinar rol activo inicial
+            let initialActiveRole = baseRole;
+            if (baseRole === 'ADMINISTRADOR') {
+              const storedRole = localStorage.getItem(`activeRole_${firebaseUser.uid}`);
+              if (storedRole === 'PORTERÍA') {
+                initialActiveRole = 'PORTERÍA';
+              }
+            }
+
             setUser({
               id: firebaseUser.uid,
               email: firebaseUser.email || '',
               firstName: data.firstName || '',
               lastName: data.lastName || '',
-              role: data.role || 'RESIDENTE',
+              role: baseRole,
               tenantId: data.tenantId || '',
             });
+            setActiveRole(initialActiveRole);
           } else {
             console.error('No se encontró el documento de perfil del usuario en Firestore');
             setUser(null);
+            setActiveRole(null);
           }
         } catch (e) {
           console.error('Error al cargar perfil de usuario de Firestore:', e);
           setUser(null);
+          setActiveRole(null);
         }
       } else {
         setUser(null);
+        setActiveRole(null);
       }
       setLoading(false);
     });
@@ -95,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signOut(auth);
       setUser(null);
+      setActiveRole(null);
       router.push('/login');
     } catch (e) {
       console.error('Error al cerrar sesión:', e);
@@ -103,14 +122,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const switchRole = (role: string) => {
+    if (!user) return;
+    if (user.role !== 'ADMINISTRADOR') return; // Solo administradores pueden conmutar de rol
+    if (role !== 'ADMINISTRADOR' && role !== 'PORTERÍA') return;
+
+    setActiveRole(role);
+    localStorage.setItem(`activeRole_${user.id}`, role);
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
+        activeRole,
         loading,
         login,
         logout,
         isAuthenticated: !!user,
+        switchRole,
       }}
     >
       {children}
