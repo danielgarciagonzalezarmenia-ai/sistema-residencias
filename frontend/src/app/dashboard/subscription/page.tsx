@@ -118,42 +118,8 @@ export default function SubscriptionPage() {
   }, [user]);
 
   // Simular Pago PSE
-  const handlePaySubscription = async () => {
-    if (!user?.tenantId) return;
-    setPayLoading(true);
-    setErrorMessage('');
-    try {
-      // 1. Calcular nueva fecha de expiración
-      const baseDate = (subscriptionExpiresAt && subscriptionExpiresAt > new Date()) 
-        ? subscriptionExpiresAt 
-        : new Date();
-      
-      const nextExpires = new Date(baseDate);
-      nextExpires.setDate(nextExpires.getDate() + 30);
-
-      // 2. Actualizar inquilino en Firestore
-      await updateDoc(doc(db, 'tenants', user.tenantId), {
-        subscriptionExpiresAt: nextExpires,
-      });
-
-      // 3. Registrar factura
-      await addDoc(collection(db, 'tenants', user.tenantId, 'invoices'), {
-        amount: 59900,
-        paymentMethod: 'PSE / Bancolombia',
-        status: 'PAID',
-        paidAt: serverTimestamp(),
-        expiresAt: nextExpires,
-      });
-
-      setSuccessMessage('¡Pago de 59.900 COP recibido exitosamente! Su suscripción se ha extendido por 30 días.');
-      fetchSubscriptionDetails();
-      setTimeout(() => setSuccessMessage(''), 4000);
-    } catch (err) {
-      console.error(err);
-      setErrorMessage('Error al procesar el pago.');
-    } finally {
-      setPayLoading(false);
-    }
+  const handlePaySubscription = () => {
+    window.open('https://mpago.li/1q3xUcA', '_blank');
   };
 
   if (!isAdmin) {
@@ -241,21 +207,16 @@ export default function SubscriptionPage() {
               </div>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-2 space-y-2">
               <button
                 onClick={handlePaySubscription}
-                disabled={payLoading}
-                className="w-full bg-violet-600 hover:bg-violet-550 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-violet-600/20 transition-all flex items-center justify-center space-x-2"
+                className="w-full bg-violet-600 hover:bg-violet-550 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-violet-600/20 transition-all flex items-center justify-center space-x-2"
               >
-                {payLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ExternalLink className="h-4 w-4" />
-                )}
-                <span>Renovar / Pagar con PSE</span>
+                <ExternalLink className="h-4 w-4" />
+                <span>Pagar con Mercado Pago</span>
               </button>
               <p className="text-[9px] text-zinc-550 text-center mt-2 leading-relaxed">
-                El pago simula la integración PSE en producción, actualizando su vencimiento al instante.
+                El pago se realiza de manera segura mediante Mercado Pago. Una vez aprobado, su cuenta se activará automáticamente al regresar.
               </p>
             </div>
           </div>

@@ -14,6 +14,9 @@ import {
   updateDoc,
   writeBatch,
   getDoc,
+  setDoc,
+  addDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import {
   LayoutDashboard,
@@ -207,9 +210,116 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     checkPin();
   }, [user, activeRole]);
 
-  // Verificar estado de suscripción (Desactivado temporalmente por solicitud del usuario)
+  // Verificar estado de suscripción
   useEffect(() => {
-    setSubscriptionStatus('ACTIVE');
+    if (!user?.tenantId || user.role !== 'ADMINISTRADOR') {
+      setSubscriptionStatus('ACTIVE');
+      return;
+    }
+    
+    const checkSubscription = async () => {
+      try {
+        const tenantDoc = await getDoc(doc(db, 'tenants', user.tenantId));
+        if (tenantDoc.exists()) {
+          const data = tenantDoc.data();
+          if (data.subscriptionExpiresAt) {
+            const expiresAt = data.subscriptionExpiresAt.toDate();
+            const now = new Date();
+            if (now <= expiresAt) {
+              setSubscriptionStatus('ACTIVE');
+            } else {
+              const diffTime = now.getTime() - expiresAt.getTime();
+              const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+              if (diffDays < 3) {
+                setSubscriptionStatus('GRACE');
+                setGraceDaysLeft(3 - diffDays);
+              } else {
+                setSubscriptionStatus('LOCKED');
+              }
+            }
+          } else {
+            // Asignar prueba de 30 días si no tiene fecha
+            const dummyExpires = new Date();
+            dummyExpires.setDate(dummyExpires.getDate() + 30);
+            await updateDoc(doc(db, 'tenants', user.tenantId), {
+              subscriptionExpiresAt: dummyExpires,
+            });
+            setSubscriptionStatus('ACTIVE');
+          }
+        }
+      } catch (err) {
+        console.error('Error verificando suscripción:', err);
+      }
+    };
+    checkSubscription();
+  }, [user]);
+
+  // Verificar y procesar el retorno de pago de Mercado Pago
+  useEffect(() => {
+    if (!user?.tenantId || user.role !== 'ADMINISTRADOR') return;
+
+    const processMercadoPagoReturn = async () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const paymentStatus = searchParams.get('status') || searchParams.get('collection_status');
+      const paymentId = searchParams.get('payment_id') || searchParams.get('collection_id');
+
+      if (paymentStatus === 'approved' && paymentId) {
+        try {
+          // Verificar si ya procesamos esta factura para evitar duplicidad
+          const invoiceDocRef = doc(db, 'tenants', user.tenantId, 'invoices', paymentId);
+          const invoiceSnap = await getDoc(invoiceDocRef);
+
+          if (!invoiceSnap.exists()) {
+            const tenantDoc = await getDoc(doc(db, 'tenants', user.tenantId));
+            let baseDate = new Date();
+            if (tenantDoc.exists() && tenantDoc.data()?.subscriptionExpiresAt) {
+              const currentExpires = tenantDoc.data().subscriptionExpiresAt.toDate();
+              if (currentExpires > new Date()) {
+                baseDate = currentExpires;
+              }
+            }
+
+            const nextExpires = new Date(baseDate);
+            nextExpires.setDate(nextExpires.getDate() + 30);
+
+            // 1. Guardar nueva fecha de expiración
+            await updateDoc(doc(db, 'tenants', user.tenantId), {
+              subscriptionExpiresAt: nextExpires,
+            });
+
+            // 2. Registrar la factura con el ID de Mercado Pago
+            await setDoc(invoiceDocRef, {
+              amount: 59900,
+              paymentMethod: 'Mercado Pago (Online)',
+              status: 'PAID',
+              paidAt: serverTimestamp(),
+              expiresAt: nextExpires,
+            });
+
+            // 3. Crear una notificación de confirmación
+            await addDoc(collection(db, 'notifications'), {
+              title: 'Suscripción Activada 🚀',
+              body: `Su pago de 59.900 COP (ID: ${paymentId}) fue procesado. Acceso extendido hasta el ${nextExpires.toLocaleDateString('es-CO')}.`,
+              type: 'finance',
+              isRead: false,
+              tenantId: user.tenantId,
+              receiverId: user.id,
+              createdAt: serverTimestamp(),
+            });
+
+            setSubscriptionStatus('ACTIVE');
+            alert(`¡Pago exitoso! Su suscripción ha sido activada y extendida hasta el ${nextExpires.toLocaleDateString('es-CO')}.`);
+          }
+
+          // Limpiar parámetros de la URL para que quede limpio el navegador
+          router.replace('/dashboard/subscription');
+        } catch (err) {
+          console.error('Error al procesar retorno de pago:', err);
+        }
+      }
+    };
+
+    processMercadoPagoReturn();
   }, [user]);
 
   // Notificaciones en tiempo real
@@ -383,21 +493,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  const handlePaySubscription = async () => {
-    if (!user?.tenantId) return;
-    setPayLoading(true);
-    try {
-      const nextExpires = new Date();
-      nextExpires.setDate(nextExpires.getDate() + 30);
-      await updateDoc(doc(db, 'tenants', user.tenantId), {
-        subscriptionExpiresAt: nextExpires,
-      });
-      setSubscriptionStatus('ACTIVE');
-    } catch (err) {
-      console.error('Error al pagar suscripción:', err);
-    } finally {
-      setPayLoading(false);
-    }
+  const handlePaySubscription = () => {
+    window.open('https://mpago.li/1q3xUcA', '_blank');
   };
 
   const roleLabel: Record<string, string> = {
@@ -706,15 +803,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </p>
               </div>
               
-              <div className="pt-2">
+              <div className="pt-2 space-y-3">
                 <button
                   onClick={handlePaySubscription}
-                  disabled={payLoading}
-                  className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-violet-600/20 transition-all flex items-center justify-center space-x-1.5"
+                  className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-violet-600/20 transition-all flex items-center justify-center space-x-1.5"
                 >
-                  {payLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  <span>Pagar Suscripción vía PSE (59.900 COP)</span>
+                  <span>Pagar Suscripción vía Mercado Pago (59.900 COP)</span>
                 </button>
+                <p className="text-[10px] text-zinc-500 leading-normal">
+                  Una vez completes el pago, serás redirigido de vuelta al panel para activar tu cuenta de forma automática.
+                </p>
               </div>
             </div>
           ) : (
