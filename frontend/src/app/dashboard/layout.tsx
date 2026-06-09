@@ -93,7 +93,6 @@ const ALL_MENU_ITEMS = [
     href: '/dashboard/gatehouse',
     icon: <Shield className="h-5 w-5" />,
     roles: ['ADMINISTRADOR', 'PORTERÍA'],
-    comingSoon: true,
   },
 ];
 
