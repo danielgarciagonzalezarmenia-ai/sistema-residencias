@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { db } from '../../../lib/firebase';
-import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { sendEmail } from '../../../lib/mail';
-import { Mail, Search, Send, CheckCircle2, User, Loader2, AlertCircle } from 'lucide-react';
+import { Mail, Search, Send, CheckCircle2, User, Loader2, AlertCircle, History, CalendarClock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Resident {
@@ -15,6 +15,14 @@ interface Resident {
   email: string;
   phone: string;
   propertyInfo: string;
+}
+
+interface EmailHistory {
+  id: string;
+  toEmail: string;
+  subject: string;
+  message: string;
+  sentAt: any;
 }
 
 export default function GmailsPage() {
@@ -28,6 +36,10 @@ export default function GmailsPage() {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'compose' | 'history'>('compose');
+  const [emailHistory, setEmailHistory] = useState<EmailHistory[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     const fetchResidents = async () => {
@@ -70,6 +82,46 @@ export default function GmailsPage() {
     );
   });
 
+  useEffect(() => {
+    if (activeTab === 'history' && selectedResident && user?.tenantId) {
+      const fetchHistory = async () => {
+        setLoadingHistory(true);
+        try {
+          const q = query(
+            collection(db, 'emails'),
+            where('tenantId', '==', user.tenantId),
+            where('residentId', '==', selectedResident.id)
+          );
+          const snap = await getDocs(q);
+          const historyList: EmailHistory[] = [];
+          snap.forEach(docSnap => {
+            const data = docSnap.data();
+            historyList.push({
+              id: docSnap.id,
+              toEmail: data.toEmail,
+              subject: data.subject,
+              message: data.message,
+              sentAt: data.sentAt,
+            });
+          });
+          
+          historyList.sort((a, b) => {
+            const timeA = a.sentAt?.toMillis() || 0;
+            const timeB = b.sentAt?.toMillis() || 0;
+            return timeB - timeA;
+          });
+          
+          setEmailHistory(historyList);
+        } catch (error) {
+          console.error("Error fetching history:", error);
+        } finally {
+          setLoadingHistory(false);
+        }
+      };
+      fetchHistory();
+    }
+  }, [activeTab, selectedResident, user?.tenantId]);
+
   const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedResident) return;
@@ -93,13 +145,23 @@ export default function GmailsPage() {
       });
 
       if (result.success) {
+        await addDoc(collection(db, 'emails'), {
+          tenantId: user?.tenantId,
+          residentId: selectedResident.id,
+          toEmail: selectedResident.email,
+          toName: `${selectedResident.firstName} ${selectedResident.lastName}`,
+          subject: subject,
+          message: message,
+          sentAt: serverTimestamp(),
+        });
+
         setStatusMsg({
           text: result.mode === 'real' ? 'Correo real enviado exitosamente.' : 'Correo enviado (Modo Demo).',
           type: 'success'
         });
         setSubject('');
         setMessage('');
-        setSelectedResident(null);
+        // No deseleccionamos el residente para que puedan ver el historial
       } else {
         setStatusMsg({ text: result.message || 'Error al enviar el correo.', type: 'error' });
       }
@@ -175,12 +237,25 @@ export default function GmailsPage() {
           </div>
         </div>
 
-        {/* Lado derecho: Formulario de correo */}
+        {/* Lado derecho: Formulario de correo / Historial */}
         <div className="lg:col-span-7 bg-zinc-900/40 border border-zinc-800 rounded-3xl p-5 flex flex-col">
-          <h2 className="text-sm font-bold text-zinc-200 mb-4 flex items-center space-x-2">
-            <Send className="h-4 w-4 text-violet-400" />
-            <span>Redactar Correo</span>
-          </h2>
+          <div className="flex items-center space-x-4 mb-4 border-b border-zinc-800 pb-2">
+            <button
+              onClick={() => setActiveTab('compose')}
+              className={`text-sm font-bold flex items-center space-x-2 pb-2 transition-colors ${activeTab === 'compose' ? 'text-violet-400 border-b-2 border-violet-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              <Send className="h-4 w-4" />
+              <span>Redactar Correo</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              disabled={!selectedResident}
+              className={`text-sm font-bold flex items-center space-x-2 pb-2 transition-colors ${!selectedResident ? 'opacity-30 cursor-not-allowed' : ''} ${activeTab === 'history' ? 'text-violet-400 border-b-2 border-violet-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              <History className="h-4 w-4" />
+              <span>Historial</span>
+            </button>
+          </div>
 
           <AnimatePresence>
             {statusMsg && (
@@ -205,7 +280,7 @@ export default function GmailsPage() {
               <Mail className="h-12 w-12 mb-3 opacity-20" />
               <p className="text-xs">Seleccione un residente del directorio para enviarle un correo.</p>
             </div>
-          ) : (
+          ) : activeTab === 'compose' ? (
             <form onSubmit={handleSendEmail} className="flex-1 flex flex-col space-y-4">
               <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-800">
                 <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-1">Destinatario</p>
@@ -258,6 +333,36 @@ export default function GmailsPage() {
                 <span>{sending ? 'Enviando correo...' : 'Enviar Correo Real'}</span>
               </button>
             </form>
+          ) : (
+            <div className="flex-1 flex flex-col space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+              {loadingHistory ? (
+                <div className="flex justify-center items-center h-32">
+                  <Loader2 className="h-6 w-6 text-violet-500 animate-spin" />
+                </div>
+              ) : emailHistory.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 py-10">
+                  <History className="h-10 w-10 mb-3 opacity-30" />
+                  <p className="text-xs">No hay correos enviados a este residente.</p>
+                </div>
+              ) : (
+                emailHistory.map(email => (
+                  <div key={email.id} className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <p className="text-sm font-bold text-zinc-200 leading-tight">{email.subject}</p>
+                      <span className="text-[10px] text-zinc-500 font-semibold flex items-center bg-zinc-900 px-2 py-1 rounded shrink-0">
+                        <CalendarClock className="h-3 w-3 mr-1" />
+                        {email.sentAt?.seconds 
+                          ? new Date(email.sentAt.seconds * 1000).toLocaleString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
+                          : 'Justo ahora'}
+                      </span>
+                    </div>
+                    <div className="bg-zinc-900/50 rounded-lg p-3">
+                      <p className="text-xs text-zinc-400 whitespace-pre-wrap">{email.message}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           )}
         </div>
       </div>

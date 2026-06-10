@@ -175,8 +175,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
   // Estados de suscripción
-  const [subscriptionStatus, setSubscriptionStatus] = useState<'ACTIVE' | 'GRACE' | 'LOCKED'>('ACTIVE');
+  const [subscriptionStatus, setSubscriptionStatus] = useState<'ACTIVE' | 'GRACE' | 'LOCKED' | 'TRIAL'>('ACTIVE');
   const [graceDaysLeft, setGraceDaysLeft] = useState(3);
+  const [trialDaysLeft, setTrialDaysLeft] = useState(7);
   const [payLoading, setPayLoading] = useState(false);
 
   useEffect(() => {
@@ -232,26 +233,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           if (data.subscriptionExpiresAt) {
             const expiresAt = data.subscriptionExpiresAt.toDate();
             const now = new Date();
+            const diffTime = expiresAt.getTime() - now.getTime();
+            
             if (now <= expiresAt) {
-              setSubscriptionStatus('ACTIVE');
-            } else {
-              const diffTime = now.getTime() - expiresAt.getTime();
-              const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-              if (diffDays < 3) {
-                setSubscriptionStatus('GRACE');
-                setGraceDaysLeft(3 - diffDays);
+              if (data.isTrial) {
+                setSubscriptionStatus('TRIAL');
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                setTrialDaysLeft(diffDays);
               } else {
+                setSubscriptionStatus('ACTIVE');
+              }
+            } else {
+              if (data.isTrial) {
+                // Si la prueba expira, se bloquea directo, sin periodo de gracia
                 setSubscriptionStatus('LOCKED');
+              } else {
+                // Para suscripciones pagadas vencidas, 3 días de gracia
+                const expiredDiffTime = now.getTime() - expiresAt.getTime();
+                const expiredDiffDays = Math.floor(expiredDiffTime / (1000 * 60 * 60 * 24));
+                if (expiredDiffDays < 3) {
+                  setSubscriptionStatus('GRACE');
+                  setGraceDaysLeft(3 - expiredDiffDays);
+                } else {
+                  setSubscriptionStatus('LOCKED');
+                }
               }
             }
           } else {
-            // Asignar prueba de 30 días si no tiene fecha
+            // Asignar prueba de 7 días si no tiene fecha de expiración
             const dummyExpires = new Date();
-            dummyExpires.setDate(dummyExpires.getDate() + 30);
+            dummyExpires.setDate(dummyExpires.getDate() + 7);
             await updateDoc(doc(db, 'tenants', user.tenantId), {
               subscriptionExpiresAt: dummyExpires,
+              isTrial: true
             });
-            setSubscriptionStatus('ACTIVE');
+            setSubscriptionStatus('TRIAL');
+            setTrialDaysLeft(7);
           }
         }
       } catch (err) {
@@ -289,9 +306,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             const nextExpires = new Date(baseDate);
             nextExpires.setDate(nextExpires.getDate() + 30);
 
-            // 1. Guardar nueva fecha de expiración
+            // 1. Guardar nueva fecha de expiración y quitar modo prueba
             await updateDoc(doc(db, 'tenants', user.tenantId), {
               subscriptionExpiresAt: nextExpires,
+              isTrial: false
             });
 
             // 2. Registrar la factura con el ID de Mercado Pago
@@ -793,6 +811,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          {/* Alerta de Período de Prueba (Trial) */}
+          {subscriptionStatus === 'TRIAL' && currentRole === 'ADMINISTRADOR' && (
+            <div className="bg-violet-600/20 border border-violet-500/30 text-violet-200 px-4 py-3 rounded-2xl mb-6 flex items-center justify-between shadow-lg shadow-violet-900/20">
+              <div className="flex items-center space-x-2.5">
+                <AlertCircle className="h-5 w-5 text-violet-400 shrink-0" />
+                <span className="text-xs font-semibold">
+                  Estás en tu período de prueba gratuita. Te quedan {trialDaysLeft} día(s) antes de que se requiera la suscripción para continuar usando la plataforma.
+                </span>
+              </div>
+              <Link
+                href="/dashboard/subscription"
+                className="bg-violet-600 hover:bg-violet-500 text-white font-bold px-3 py-1.5 rounded-xl text-[10px] transition-all shadow-lg shadow-violet-600/20 whitespace-nowrap"
+              >
+                Suscribirse
+              </Link>
+            </div>
+          )}
+
           {/* Alerta de Período de Gracia SaaS */}
           {subscriptionStatus === 'GRACE' && currentRole === 'ADMINISTRADOR' && (
             <div className="bg-amber-600/20 border border-amber-500/30 text-amber-200 px-4 py-3 rounded-2xl mb-6 flex items-center justify-between">
