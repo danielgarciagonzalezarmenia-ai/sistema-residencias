@@ -12,7 +12,7 @@ import {
   UserCredential,
 } from 'firebase/auth';
 import { googleProvider } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 interface UserProfile {
   id: string;
@@ -21,6 +21,7 @@ interface UserProfile {
   lastName: string;
   role: string;
   tenantId: string;
+  status?: string;
 }
 
 interface AuthContextType {
@@ -60,6 +61,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
+        let userStatus = 'ACTIVE';
+        if (baseRole === 'RESIDENTE') {
+          try {
+            const residentsQuery = query(collection(db, 'residents'), where('email', '==', firebaseUser.email));
+            const residentsSnap = await getDocs(residentsQuery);
+            if (!residentsSnap.empty) {
+              userStatus = residentsSnap.docs[0].data().status || 'ACTIVE';
+            }
+          } catch (e) {
+            console.error('Error fetching resident status', e);
+          }
+        }
+
         setUser({
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
@@ -67,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           lastName: data.lastName || '',
           role: baseRole,
           tenantId: data.tenantId || '',
+          status: userStatus,
         });
         setActiveRole(initialActiveRole);
       } else {

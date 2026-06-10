@@ -23,6 +23,8 @@ import {
   XCircle,
   Loader2,
   Mail,
+  Link as LinkIcon,
+  Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sendEmail } from '../../../lib/mail';
@@ -58,6 +60,7 @@ export default function ResidentsPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Filtros
   const [filterTower, setFilterTower] = useState('');
@@ -212,6 +215,7 @@ export default function ResidentsPage() {
   };
 
   const handleToggleStatus = async (id: string, currentStatus: string) => {
+    // Si está pendiente o inactivo, pasa a activo. Si está activo, pasa a inactivo.
     const nextStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     try {
       const residentRef = doc(db, 'residents', id);
@@ -268,6 +272,14 @@ export default function ResidentsPage() {
   };
 
   // Filtrado local para búsqueda fluida en tiempo real
+  const handleCopyInviteLink = () => {
+    if (!user?.tenantId) return;
+    const url = `${window.location.origin}/register?invite=${user.tenantId}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
   const filteredResidents = residents.filter((resident) => {
     const matchStatus = filterStatus ? resident.status === filterStatus : true;
     const matchTower = filterTower
@@ -294,16 +306,26 @@ export default function ResidentsPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setFormError(null);
-            setIsCreateOpen(true);
-          }}
-          className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-medium bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-colors shadow-lg shadow-violet-600/10"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Agregar Residente</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={handleCopyInviteLink}
+            className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl transition-colors shadow-lg shadow-zinc-800/10"
+          >
+            {copiedLink ? <Check className="h-4 w-4 text-emerald-400" /> : <LinkIcon className="h-4 w-4" />}
+            <span>{copiedLink ? '¡Enlace Copiado!' : 'Copiar Enlace'}</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              setFormError(null);
+              setIsCreateOpen(true);
+            }}
+            className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-medium bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-colors shadow-lg shadow-violet-600/10"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Agregar Residente</span>
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -337,6 +359,7 @@ export default function ResidentsPage() {
           >
             <option value="">Todos</option>
             <option value="ACTIVE">Activos</option>
+            <option value="PENDING">Pendientes</option>
             <option value="INACTIVE">Inactivos</option>
           </select>
         </div>
@@ -401,13 +424,21 @@ export default function ResidentsPage() {
                         className={`inline-flex items-center space-x-1 px-2 py-0.5 text-[10px] font-bold rounded-full cursor-pointer ${
                           resident.status === 'ACTIVE'
                             ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                            : resident.status === 'PENDING'
+                            ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
                             : 'text-zinc-400 bg-zinc-800 border border-zinc-700'
                         }`}
+                        title="Haz clic para cambiar el estado"
                       >
                         {resident.status === 'ACTIVE' ? (
                           <>
                             <CheckCircle className="h-3 w-3" />
                             <span>Activo</span>
+                          </>
+                        ) : resident.status === 'PENDING' ? (
+                          <>
+                            <Loader2 className="h-3 w-3" />
+                            <span>Pendiente</span>
                           </>
                         ) : (
                           <>

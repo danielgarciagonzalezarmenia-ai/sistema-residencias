@@ -1,18 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { auth, db } from '../../lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, collection, addDoc, getDocs, query, where, getDoc } from 'firebase/firestore';
 import { Building2, Mail, Lock, User, Sparkles, Loader2, Building, AlertTriangle, CheckCircle2, FileText, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { loginWithGooglePopup, reloadUserProfile } = useAuth();
+  
+  const inviteTenantId = searchParams.get('invite');
+
   const [activeTab, setActiveTab] = useState<'admin' | 'resident'>('admin');
   
   // Google Auth states
@@ -30,10 +34,33 @@ export default function RegisterPage() {
   const [condoNit, setCondoNit] = useState('');
   const [condoAddress, setCondoAddress] = useState('');
 
+  // Invitation fields
+  const [properties, setProperties] = useState<any[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState('');
+  const [propertyRole, setPropertyRole] = useState<'owner' | 'inhabitant'>('owner');
+
   // Status states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (inviteTenantId) {
+      setActiveTab('resident');
+      const fetchProps = async () => {
+        try {
+          const q = query(collection(db, 'properties'), where('tenantId', '==', inviteTenantId));
+          const snap = await getDocs(q);
+          const props: any[] = [];
+          snap.forEach(doc => props.push({ id: doc.id, ...doc.data() }));
+          setProperties(props);
+        } catch (err) {
+          console.error('Error fetching properties', err);
+        }
+      };
+      fetchProps();
+    }
+  }, [inviteTenantId]);
 
   // --- REGISTRO CON CORREO Y CONTRASEÑA ---
   const handleRegister = async (e: React.FormEvent) => {
@@ -50,6 +77,11 @@ export default function RegisterPage() {
 
     if (activeTab === 'admin' && (!condoName || !condoAddress)) {
       setError('Por favor escriba el nombre y la dirección de su conjunto residencial.');
+      return;
+    }
+
+    if (inviteTenantId && !selectedPropertyId) {
+      setError('Por favor seleccione una torre y apartamento.');
       return;
     }
 
@@ -87,38 +119,73 @@ export default function RegisterPage() {
 
       } else {
         // --- REGISTRO DE RESIDENTE (INQUILINO) ---
-        const residentsQuery = query(
-          collection(db, 'residents'),
-          where('email', '==', email.trim())
-        );
-        const residentsSnap = await getDocs(residentsQuery);
+        if (inviteTenantId) {
+          // Flow de Invitación por Link
+          const authResult = await createUserWithEmailAndPassword(auth, email, password);
+          const uid = authResult.user.uid;
 
-        if (residentsSnap.empty) {
-          throw new Error(
-            'Tu correo electrónico no ha sido pre-registrado por el administrador del conjunto. ' +
-            'Por favor, solicita a tu administración que te registre primero como residente.'
+          // 1. Agregar a la colección users
+          await setDoc(doc(db, 'users', uid), {
+            firstName,
+            lastName,
+            email,
+            role: 'RESIDENTE',
+            tenantId: inviteTenantId,
+            createdAt: new Date(),
+          });
+
+          // 2. Agregar a la colección residents como PENDING
+          const prop = properties.find(p => p.id === selectedPropertyId);
+          await addDoc(collection(db, 'residents'), {
+            firstName,
+            lastName,
+            document: '', // They can update it later
+            email,
+            phone: '',
+            status: 'PENDING',
+            tenantId: inviteTenantId,
+            properties: prop ? [{ id: prop.id, tower: prop.tower, unit: prop.unit }] : [],
+            createdAt: new Date()
+          });
+
+          setSuccess(true);
+          setTimeout(() => router.push('/dashboard'), 1500);
+
+        } else {
+          // Flow de pre-registro manual por Admin
+          const residentsQuery = query(
+            collection(db, 'residents'),
+            where('email', '==', email.trim())
           );
+          const residentsSnap = await getDocs(residentsQuery);
+
+          if (residentsSnap.empty) {
+            throw new Error(
+              'Tu correo electrónico no ha sido pre-registrado por el administrador del conjunto. ' +
+              'Por favor, solicita a tu administración que te registre primero como residente, o pídele un Enlace de Invitación.'
+            );
+          }
+
+          const residentData = residentsSnap.docs[0].data();
+          const matchedTenantId = residentData.tenantId;
+
+          const authResult = await createUserWithEmailAndPassword(auth, email, password);
+          const uid = authResult.user.uid;
+
+          await setDoc(doc(db, 'users', uid), {
+            firstName,
+            lastName,
+            email,
+            role: 'RESIDENTE',
+            tenantId: matchedTenantId,
+            createdAt: new Date(),
+          });
+
+          setSuccess(true);
+          setTimeout(() => {
+            router.push('/dashboard');
+          }, 1500);
         }
-
-        const residentData = residentsSnap.docs[0].data();
-        const matchedTenantId = residentData.tenantId;
-
-        const authResult = await createUserWithEmailAndPassword(auth, email, password);
-        const uid = authResult.user.uid;
-
-        await setDoc(doc(db, 'users', uid), {
-          firstName,
-          lastName,
-          email,
-          role: 'RESIDENTE',
-          tenantId: matchedTenantId,
-          createdAt: new Date(),
-        });
-
-        setSuccess(true);
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 1500);
       }
     } catch (err: any) {
       console.error(err);
@@ -154,30 +221,40 @@ export default function RegisterPage() {
       const lName = names.slice(1).join(' ') || '';
 
       if (activeTab === 'resident') {
-         const residentsQuery = query(collection(db, 'residents'), where('email', '==', userEmail));
-         const residentsSnap = await getDocs(residentsQuery);
-         
-         if (residentsSnap.empty) {
-            await auth.signOut();
-            setError('Tu correo de Google no ha sido pre-registrado por el administrador del conjunto.');
+         if (inviteTenantId) {
+            // Flow de invitación: Pedir detalles adicionales (Apto y Rol)
+            setFirstName(fName);
+            setLastName(lName);
+            setGoogleUserCred(userCred);
+            setIsCompletingGoogleAuth(true);
             setLoading(false);
-            return;
+         } else {
+           // Flow pre-registro
+           const residentsQuery = query(collection(db, 'residents'), where('email', '==', userEmail));
+           const residentsSnap = await getDocs(residentsQuery);
+           
+           if (residentsSnap.empty) {
+              await auth.signOut();
+              setError('Tu correo de Google no ha sido pre-registrado por el administrador del conjunto.');
+              setLoading(false);
+              return;
+           }
+           
+           const matchedTenantId = residentsSnap.docs[0].data().tenantId;
+           
+           await setDoc(doc(db, 'users', uid), {
+             firstName: fName,
+             lastName: lName,
+             email: userEmail,
+             role: 'RESIDENTE',
+             tenantId: matchedTenantId,
+             createdAt: new Date(),
+           });
+           
+           setSuccess(true);
+           await reloadUserProfile();
+           setTimeout(() => router.push('/dashboard'), 1500);
          }
-         
-         const matchedTenantId = residentsSnap.docs[0].data().tenantId;
-         
-         await setDoc(doc(db, 'users', uid), {
-           firstName: fName,
-           lastName: lName,
-           email: userEmail,
-           role: 'RESIDENTE',
-           tenantId: matchedTenantId,
-           createdAt: new Date(),
-         });
-         
-         setSuccess(true);
-         await reloadUserProfile();
-         setTimeout(() => router.push('/dashboard'), 1500);
       } else {
          // Admin
          setFirstName(fName);
@@ -194,10 +271,14 @@ export default function RegisterPage() {
     }
   };
 
-  const handleCompleteGoogleAdmin = async (e: React.FormEvent) => {
+  const handleCompleteGoogleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!condoName || !condoAddress) {
+    if (activeTab === 'admin' && (!condoName || !condoAddress)) {
       setError('Por favor escriba el nombre y la dirección de su conjunto residencial.');
+      return;
+    }
+    if (activeTab === 'resident' && inviteTenantId && !selectedPropertyId) {
+      setError('Por favor seleccione una torre y apartamento.');
       return;
     }
     setLoading(true);
@@ -206,21 +287,46 @@ export default function RegisterPage() {
       const uid = googleUserCred.user.uid;
       const userEmail = googleUserCred.user.email;
 
-      const tenantRef = await addDoc(collection(db, 'tenants'), {
-        name: condoName,
-        nit: condoNit || 'S.N.',
-        address: condoAddress,
-        createdAt: new Date(),
-      });
+      if (activeTab === 'admin') {
+        const tenantRef = await addDoc(collection(db, 'tenants'), {
+          name: condoName,
+          nit: condoNit || 'S.N.',
+          address: condoAddress,
+          createdAt: new Date(),
+        });
 
-      await setDoc(doc(db, 'users', uid), {
-        firstName,
-        lastName,
-        email: userEmail,
-        role: 'ADMINISTRADOR',
-        tenantId: tenantRef.id,
-        createdAt: new Date(),
-      });
+        await setDoc(doc(db, 'users', uid), {
+          firstName,
+          lastName,
+          email: userEmail,
+          role: 'ADMINISTRADOR',
+          tenantId: tenantRef.id,
+          createdAt: new Date(),
+        });
+      } else if (activeTab === 'resident' && inviteTenantId) {
+        // Guardar residente invitado
+        await setDoc(doc(db, 'users', uid), {
+          firstName,
+          lastName,
+          email: userEmail,
+          role: 'RESIDENTE',
+          tenantId: inviteTenantId,
+          createdAt: new Date(),
+        });
+
+        const prop = properties.find(p => p.id === selectedPropertyId);
+        await addDoc(collection(db, 'residents'), {
+          firstName,
+          lastName,
+          document: '',
+          email: userEmail,
+          phone: '',
+          status: 'PENDING',
+          tenantId: inviteTenantId,
+          properties: prop ? [{ id: prop.id, tower: prop.tower, unit: prop.unit }] : [],
+          createdAt: new Date()
+        });
+      }
 
       setSuccess(true);
       await reloadUserProfile();
@@ -244,7 +350,7 @@ export default function RegisterPage() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-lg z-10"
       >
-        {!isCompletingGoogleAuth && (
+        {!isCompletingGoogleAuth && !inviteTenantId && (
           <Link
             href="/login"
             className="inline-flex items-center space-x-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors mb-6 group"
@@ -259,16 +365,24 @@ export default function RegisterPage() {
             <Building2 className="h-9 w-9 text-violet-400" />
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-violet-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
-            {isCompletingGoogleAuth ? 'Complete su Registro' : 'Registro en Acacias Smart'}
+            {isCompletingGoogleAuth 
+              ? 'Complete su Registro' 
+              : inviteTenantId 
+                ? 'Invitación a Registro' 
+                : 'Registro en Acacias Smart'}
           </h1>
           <p className="text-zinc-400 text-xs mt-1">
-            {isCompletingGoogleAuth ? 'Necesitamos un par de datos de su conjunto.' : 'Cree su cuenta de administración o vincúlese como residente.'}
+            {isCompletingGoogleAuth 
+              ? 'Necesitamos un par de datos para finalizar su registro.' 
+              : inviteTenantId 
+                ? 'Usted ha sido invitado a unirse al conjunto. Ingrese sus datos.' 
+                : 'Cree su cuenta de administración o vincúlese como residente.'}
           </p>
         </div>
 
         <div className="bg-zinc-900/40 border border-zinc-800 backdrop-blur-xl p-6 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
           
-          {!isCompletingGoogleAuth && (
+          {!isCompletingGoogleAuth && !inviteTenantId && (
             <div className="flex border-b border-zinc-800 mb-6">
               <button
                 onClick={() => {
@@ -323,58 +437,95 @@ export default function RegisterPage() {
           )}
 
           {isCompletingGoogleAuth ? (
-            <form onSubmit={handleCompleteGoogleAdmin} className="space-y-4">
+            <form onSubmit={handleCompleteGoogleAuth} className="space-y-4">
               <div className="bg-zinc-950/60 border border-zinc-800 rounded-xl p-4 mb-4">
                 <p className="text-xs text-zinc-400 mb-2">Información obtenida de Google:</p>
                 <p className="text-sm font-semibold text-zinc-200">{firstName} {lastName}</p>
                 <p className="text-xs text-zinc-500">{googleUserCred?.user?.email}</p>
               </div>
 
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">Nombre del Conjunto o Edificio *</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Building2 className="h-4 w-4 text-zinc-500" />
+              {activeTab === 'admin' && (
+                <>
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Nombre del Conjunto o Edificio *</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Building2 className="h-4 w-4 text-zinc-500" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        disabled={loading || success}
+                        value={condoName}
+                        onChange={(e) => setCondoName(e.target.value)}
+                        placeholder="Ej. Torres del Parque"
+                        className="w-full pl-9 pr-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
+                      />
+                    </div>
                   </div>
-                  <input
-                    type="text"
-                    required
-                    disabled={loading || success}
-                    value={condoName}
-                    onChange={(e) => setCondoName(e.target.value)}
-                    placeholder="Ej. Torres del Parque"
-                    className="w-full pl-9 pr-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">NIT del Conjunto (Opcional)</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FileText className="h-4 w-4 text-zinc-500" />
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5">NIT del Conjunto (Opcional)</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FileText className="h-4 w-4 text-zinc-500" />
+                      </div>
+                      <input
+                        type="text"
+                        disabled={loading || success}
+                        value={condoNit}
+                        onChange={(e) => setCondoNit(e.target.value)}
+                        placeholder="Ej. 900.123.456-7"
+                        className="w-full pl-9 pr-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
+                      />
+                    </div>
                   </div>
-                  <input
-                    type="text"
-                    disabled={loading || success}
-                    value={condoNit}
-                    onChange={(e) => setCondoNit(e.target.value)}
-                    placeholder="Ej. 900.123.456-7"
-                    className="w-full pl-9 pr-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">Dirección del Conjunto *</label>
-                <input
-                  type="text"
-                  required
-                  disabled={loading || success}
-                  value={condoAddress}
-                  onChange={(e) => setCondoAddress(e.target.value)}
-                  placeholder="Ej. Calle 123 # 45 - 67"
-                  className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
-                />
-              </div>
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Dirección del Conjunto *</label>
+                    <input
+                      type="text"
+                      required
+                      disabled={loading || success}
+                      value={condoAddress}
+                      onChange={(e) => setCondoAddress(e.target.value)}
+                      placeholder="Ej. Calle 123 # 45 - 67"
+                      className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
+                    />
+                  </div>
+                </>
+              )}
+
+              {activeTab === 'resident' && inviteTenantId && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1.5">Seleccione Inmueble *</label>
+                      <select
+                        required
+                        value={selectedPropertyId}
+                        onChange={(e) => setSelectedPropertyId(e.target.value)}
+                        className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
+                      >
+                        <option value="">-- Elija uno --</option>
+                        {properties.map(p => (
+                          <option key={p.id} value={p.id}>{p.tower} - {p.unit}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1.5">Su Rol *</label>
+                      <select
+                        required
+                        value={propertyRole}
+                        onChange={(e) => setPropertyRole(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
+                      >
+                        <option value="owner">Propietario</option>
+                        <option value="inhabitant">Inquilino</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
 
               <button
                 type="submit"
@@ -382,7 +533,7 @@ export default function RegisterPage() {
                 className="w-full mt-6 py-3 px-4 font-medium text-white bg-violet-600 rounded-xl hover:bg-violet-500 disabled:bg-violet-800/50 disabled:cursor-not-allowed transition-all shadow-lg shadow-violet-600/20 flex items-center justify-center space-x-2 text-sm"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                <span>{loading ? 'Creando cuenta...' : 'Completar Registro'}</span>
+                <span>{loading ? 'Procesando...' : 'Completar Registro'}</span>
               </button>
             </form>
           ) : (
@@ -410,7 +561,7 @@ export default function RegisterPage() {
               </div>
 
               <form onSubmit={handleRegister} className="space-y-4">
-                {activeTab === 'resident' && (
+                {activeTab === 'resident' && !inviteTenantId && (
                   <div className="p-3 bg-violet-500/5 border border-violet-500/15 rounded-xl text-[11px] text-zinc-300 leading-relaxed">
                     ℹ️ Para poder registrarte como residente, tu administrador debe haber agregado previamente tu correo en la lista de <strong>Residentes</strong> del conjunto residencial.
                   </div>
@@ -478,6 +629,40 @@ export default function RegisterPage() {
                     />
                   </div>
                 </div>
+
+                {/* Campos extra de invitación manual */}
+                {activeTab === 'resident' && inviteTenantId && (
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-800/50">
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1.5">Seleccione Inmueble *</label>
+                      <select
+                        required
+                        disabled={loading || success}
+                        value={selectedPropertyId}
+                        onChange={(e) => setSelectedPropertyId(e.target.value)}
+                        className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
+                      >
+                        <option value="">-- Elija uno --</option>
+                        {properties.map(p => (
+                          <option key={p.id} value={p.id}>{p.tower} - {p.unit}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1.5">Su Rol *</label>
+                      <select
+                        required
+                        disabled={loading || success}
+                        value={propertyRole}
+                        onChange={(e) => setPropertyRole(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
+                      >
+                        <option value="owner">Propietario</option>
+                        <option value="inhabitant">Inquilino</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
 
                 <AnimatePresence>
                   {activeTab === 'admin' && (
@@ -550,5 +735,17 @@ export default function RegisterPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 text-violet-500 animate-spin" />
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 }

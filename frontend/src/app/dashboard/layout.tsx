@@ -595,10 +595,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative">
+
+        {/* Banner de Cuenta Pendiente para Residentes */}
+        {user?.role === 'RESIDENTE' && user?.status === 'PENDING' && (
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 sticky top-0 z-40 backdrop-blur-md">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-start sm:items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+                <p className="text-sm text-amber-200">
+                  <span className="font-bold">Cuenta Pendiente de Aprobación:</span> Su administrador debe revisar y aprobar su cuenta. Algunas funciones pueden estar limitadas hasta entonces.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Header */}
-        <header className="h-16 border-b border-zinc-900 bg-zinc-950/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6">
+        <header className={`h-16 border-b border-zinc-900 bg-zinc-950/90 backdrop-blur-md sticky ${user?.role === 'RESIDENTE' && user?.status === 'PENDING' ? 'top-[48px]' : 'top-0'} z-30 flex items-center justify-between px-4 sm:px-6`}>
           <div className="flex items-center space-x-3">
             {/* Logo mobile */}
             <div className="h-7 w-7 rounded-lg bg-violet-600 flex items-center justify-center md:hidden">
