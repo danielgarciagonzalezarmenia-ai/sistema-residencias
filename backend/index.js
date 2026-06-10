@@ -294,8 +294,10 @@ app.post('/send-email', async (req, res) => {
     const senderEmail = process.env.GOOGLE_SENDER_EMAIL || 'residentepro.notificaciones@gmail.com';
 
     // 2. Construir mensaje MIME
+    const encodedDisplayName = `=?utf-8?B?${Buffer.from(tenantName).toString('base64')}?=`;
+
     const mimeParts = [
-      `From: "${tenantName} — ResidentePro 🏢" <${senderEmail}>`,
+      `From: ${encodedDisplayName} <${senderEmail}>`,
       `To: ${toEmail}`,
       `Subject: =?utf-8?B?${Buffer.from(`${config.icon} ${subject}`).toString('base64')}?=`,
       'MIME-Version: 1.0',
