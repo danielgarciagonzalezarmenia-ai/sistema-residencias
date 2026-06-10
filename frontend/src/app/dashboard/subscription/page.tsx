@@ -97,7 +97,7 @@ export default function SubscriptionPage() {
         const data = d.data();
         list.push({
           id: d.id,
-          amount: data.amount || 59900,
+          amount: data.amount || 99900,
           paymentMethod: data.paymentMethod || 'PSE',
           status: data.status || 'PAID',
           paidAt: data.paidAt,
@@ -174,7 +174,7 @@ export default function SubscriptionPage() {
             </div>
 
             <div>
-              <p className="text-3xl font-black text-zinc-100">59.900 COP<span className="text-xs text-zinc-500 font-medium">/mes</span></p>
+              <p className="text-3xl font-black text-zinc-100">99.900 COP<span className="text-xs text-zinc-500 font-medium">/mes</span></p>
               <p className="text-xs text-zinc-400 mt-1">Soporte premium, actualizaciones y acceso ilimitado</p>
             </div>
 

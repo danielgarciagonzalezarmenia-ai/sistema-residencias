@@ -331,7 +331,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             // 2. Registrar la factura con el ID de Mercado Pago
             await setDoc(invoiceDocRef, {
-              amount: 59900,
+              amount: 99900,
               paymentMethod: 'Mercado Pago (Online)',
               status: 'PAID',
               paidAt: serverTimestamp(),
@@ -341,7 +341,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             // 3. Crear una notificación de confirmación
             await addDoc(collection(db, 'notifications'), {
               title: 'Suscripción Activada 🚀',
-              body: `Su pago de 59.900 COP (ID: ${paymentId}) fue procesado. Acceso extendido hasta el ${nextExpires.toLocaleDateString('es-CO')}.`,
+              body: `Su pago de 99.900 COP (ID: ${paymentId}) fue procesado. Acceso extendido hasta el ${nextExpires.toLocaleDateString('es-CO')}.`,
               type: 'finance',
               isRead: false,
               tenantId: user.tenantId,
