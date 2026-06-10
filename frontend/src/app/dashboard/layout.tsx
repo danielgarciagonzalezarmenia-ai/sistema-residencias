@@ -963,15 +963,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* BOTTOM NAV — Mobile */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-zinc-900/95 border-t border-zinc-800 backdrop-blur-xl z-40 flex items-center justify-around px-1">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-zinc-900/95 border-t border-zinc-800 backdrop-blur-xl z-40 flex items-center gap-2 overflow-x-auto no-scrollbar px-2">
         {menuItems.filter(i => !i.comingSoon).map((item) => {
           const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center px-2 py-1.5 rounded-xl space-y-1 transition-colors ${
-                isActive ? 'text-violet-400' : 'text-zinc-500'
+              className={`flex flex-col items-center justify-center min-w-[64px] px-2 py-1.5 rounded-xl space-y-1 transition-colors shrink-0 ${
+                isActive ? 'text-violet-400 bg-violet-500/10' : 'text-zinc-500 hover:bg-zinc-800/50'
               }`}
             >
               {item.icon}
@@ -981,7 +981,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         })}
         <button
           onClick={logout}
-          className="flex flex-col items-center justify-center px-2 py-1.5 text-zinc-500 hover:text-rose-400 transition-colors space-y-1"
+          className="flex flex-col items-center justify-center min-w-[64px] px-2 py-1.5 text-zinc-500 hover:text-rose-400 transition-colors space-y-1 shrink-0"
         >
           <LogOut className="h-5 w-5" />
           <span className="text-[9px] font-semibold leading-none">Salir</span>
