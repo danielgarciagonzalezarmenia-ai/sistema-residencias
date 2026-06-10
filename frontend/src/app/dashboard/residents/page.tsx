@@ -274,7 +274,11 @@ export default function ResidentsPage() {
   // Filtrado local para búsqueda fluida en tiempo real
   const handleCopyInviteLink = () => {
     if (!user?.tenantId) return;
-    const url = `${window.location.origin}/register?invite=${user.tenantId}`;
+    
+    // Obtenemos la URL base (sirve tanto para localhost como para GitHub Pages con subrutas)
+    const baseUrl = window.location.href.split('/dashboard')[0];
+    const url = `${baseUrl}/register?invite=${user.tenantId}`;
+    
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
