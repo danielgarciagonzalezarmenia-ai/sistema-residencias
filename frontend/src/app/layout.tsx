@@ -13,7 +13,6 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "ResidentePro | Administración Residencial Inteligente",
   description: "Plataforma SaaS para la administración inteligente de conjuntos residenciales.",
-  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {

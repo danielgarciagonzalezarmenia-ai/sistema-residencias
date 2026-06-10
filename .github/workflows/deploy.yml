@@ -51,7 +51,6 @@ jobs:
           NEXT_PUBLIC_EMAILJS_SERVICE_ID: ${{ secrets.NEXT_PUBLIC_EMAILJS_SERVICE_ID }}
           NEXT_PUBLIC_EMAILJS_TEMPLATE_ID: ${{ secrets.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID }}
           NEXT_PUBLIC_EMAILJS_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY }}
-          NEXT_PUBLIC_VAPID_KEY: BKALxFe_zvK89rpvKjwutzqQOgJuiSvu0RRA_sbe2fMsAJeJaKcUZcuvB4smSRYlEWy4zubv3VKLJI69BVZegRM
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

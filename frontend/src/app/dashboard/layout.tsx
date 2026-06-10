@@ -42,13 +42,9 @@ import {
   CreditCard,
   AlertCircle,
   Mail,
-  MessageSquare,
-  Smartphone,
-  BellRing,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { messaging, getToken } from '../../lib/firebase';
 
 interface NotificationItem {
   id: string;
@@ -145,12 +141,7 @@ const ALL_MENU_ITEMS: MenuItem[] = [
     icon: <Mail className="h-5 w-5" />,
     roles: ['ADMINISTRADOR', 'PORTERÍA'],
   },
-  {
-    name: 'Chat',
-    href: '/dashboard/chat',
-    icon: <MessageSquare className="h-5 w-5" />,
-    roles: ['ADMINISTRADOR', 'RESIDENTE'],
-  },
+
   {
     name: 'Suscripción SaaS',
     href: '/dashboard/subscription',
@@ -170,10 +161,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [tenantName, setTenantName] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Estados PWA y Notificaciones
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showInstallBtn, setShowInstallBtn] = useState(false);
-  const [showNotifBtn, setShowNotifBtn] = useState(false);
+
 
   // Estados para conmutación de roles y PIN
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -201,52 +189,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [loading, isAuthenticated, router]);
 
-  // Lógica PWA Install y Permiso de Notificaciones
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setShowInstallBtn(true);
-    };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    if ('Notification' in window) {
-      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-        setShowNotifBtn(true);
-      }
-    }
-
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setShowInstallBtn(false);
-      }
-      setDeferredPrompt(null);
-    }
-  };
-
-  const handleEnableNotifications = async () => {
-    if ('Notification' in window && messaging && user?.id) {
-      try {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          setShowNotifBtn(false);
-          const token = await getToken(messaging, { vapidKey: process.env.NEXT_PUBLIC_VAPID_KEY });
-          if (token) {
-            await updateDoc(doc(db, 'users', user.id), { fcmToken: token });
-          }
-        }
-      } catch (e) {
-        console.error('Error enabling notifications manually:', e);
-      }
-    }
-  };
 
   // Cargar nombre del conjunto
   useEffect(() => {
@@ -709,28 +652,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center space-x-3">
-            {/* Botón Activar Notificaciones */}
-            {showNotifBtn && (
-              <button
-                onClick={handleEnableNotifications}
-                className="flex items-center space-x-1 sm:space-x-2 bg-violet-600 hover:bg-violet-500 text-white px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all shadow-lg shadow-violet-900/20"
-              >
-                <BellRing className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Notificaciones</span>
-              </button>
-            )}
-
-            {/* Botón Descargar App (PWA) */}
-            {showInstallBtn && (
-              <button
-                onClick={handleInstallClick}
-                className="flex items-center space-x-1 sm:space-x-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all"
-              >
-                <Smartphone className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Instalar App</span>
-              </button>
-            )}
-
             {/* Bell Notifications */}
             <div className="relative" ref={dropdownRef}>
               <button

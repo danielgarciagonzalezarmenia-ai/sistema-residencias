@@ -11,8 +11,8 @@ import {
   User as FirebaseUser,
   UserCredential,
 } from 'firebase/auth';
-import { googleProvider, messaging, getToken } from '../lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { googleProvider } from '../lib/firebase';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 interface UserProfile {
   id: string;
@@ -96,27 +96,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const setupNotifications = async (uid: string) => {
-    try {
-      if (typeof window !== 'undefined' && 'Notification' in window && messaging) {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          const token = await getToken(messaging, { vapidKey: process.env.NEXT_PUBLIC_VAPID_KEY });
-          if (token) {
-            await updateDoc(doc(db, 'users', uid), { fcmToken: token });
-          }
-        }
-      }
-    } catch (e) {
-      console.error('Error configurando notificaciones:', e);
-    }
-  };
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         await loadUserFromFirestore(firebaseUser);
-        setupNotifications(firebaseUser.uid);
       } else {
         setUser(null);
         setActiveRole(null);
