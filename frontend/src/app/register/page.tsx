@@ -40,6 +40,19 @@ function RegisterForm() {
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [propertyRole, setPropertyRole] = useState<'owner' | 'inhabitant'>('owner');
 
+  // Vehicle and Pet states
+  const [livesInProperty, setLivesInProperty] = useState(true);
+  const [hasVehicle, setHasVehicle] = useState(false);
+  const [vehicleType, setVehicleType] = useState('Automóvil');
+  const [vehiclePlate, setVehiclePlate] = useState('');
+  const [vehicleBrand, setVehicleBrand] = useState('');
+
+  const [hasPet, setHasPet] = useState(false);
+  const [petType, setPetType] = useState('Perro');
+  const [petTypeOther, setPetTypeOther] = useState('');
+  const [petName, setPetName] = useState('');
+  const [petDescription, setPetDescription] = useState('');
+
   // Status states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,6 +150,7 @@ function RegisterForm() {
 
           // 2. Agregar a la colección residents como PENDING
           const prop = properties.find(p => p.id === selectedPropertyId);
+          const livesHere = propertyRole === 'inhabitant' || livesInProperty;
           await addDoc(collection(db, 'residents'), {
             firstName,
             lastName,
@@ -146,7 +160,21 @@ function RegisterForm() {
             status: 'PENDING',
             tenantId: inviteTenantId,
             properties: prop ? [{ id: prop.id, tower: prop.tower, unit: prop.unit }] : [],
-            createdAt: new Date()
+            createdAt: new Date(),
+            propertyRole,
+            livesInProperty: propertyRole === 'inhabitant' ? true : livesInProperty,
+            hasVehicle: livesHere ? hasVehicle : false,
+            vehicleInfo: (livesHere && hasVehicle) ? {
+              type: vehicleType,
+              plate: vehiclePlate.trim().toUpperCase(),
+              brand: vehicleBrand.trim(),
+            } : null,
+            hasPet: livesHere ? hasPet : false,
+            petInfo: (livesHere && hasPet) ? {
+              type: petType === 'Otro' ? petTypeOther.trim() : petType,
+              name: petName.trim(),
+              description: petDescription.trim(),
+            } : null,
           });
 
           setSuccess(true);
@@ -319,6 +347,7 @@ function RegisterForm() {
         });
 
         const prop = properties.find(p => p.id === selectedPropertyId);
+        const livesHere = propertyRole === 'inhabitant' || livesInProperty;
         await addDoc(collection(db, 'residents'), {
           firstName,
           lastName,
@@ -328,7 +357,21 @@ function RegisterForm() {
           status: 'PENDING',
           tenantId: inviteTenantId,
           properties: prop ? [{ id: prop.id, tower: prop.tower, unit: prop.unit }] : [],
-          createdAt: new Date()
+          createdAt: new Date(),
+          propertyRole,
+          livesInProperty: propertyRole === 'inhabitant' ? true : livesInProperty,
+          hasVehicle: livesHere ? hasVehicle : false,
+          vehicleInfo: (livesHere && hasVehicle) ? {
+            type: vehicleType,
+            plate: vehiclePlate.trim().toUpperCase(),
+            brand: vehicleBrand.trim(),
+          } : null,
+          hasPet: livesHere ? hasPet : false,
+          petInfo: (livesHere && hasPet) ? {
+            type: petType === 'Otro' ? petTypeOther.trim() : petType,
+            name: petName.trim(),
+            description: petDescription.trim(),
+          } : null,
         });
       }
 
@@ -336,10 +379,164 @@ function RegisterForm() {
       await reloadUserProfile();
       setTimeout(() => router.push('/dashboard'), 1500);
     } catch (err: any) {
+      console.error(err);
       setError(err.message || 'Error al completar el registro.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const renderVehiclePetFields = () => {
+    const showLivingOption = propertyRole === 'owner';
+    const livesHere = propertyRole === 'inhabitant' || livesInProperty;
+
+    return (
+      <div className="space-y-4 pt-4 border-t border-zinc-800/50 mt-4">
+        {showLivingOption && (
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="livesInProperty"
+              checked={livesInProperty}
+              onChange={(e) => setLivesInProperty(e.target.checked)}
+              className="h-4 w-4 rounded border-zinc-850 bg-zinc-950 text-violet-600 focus:ring-violet-500 cursor-pointer"
+            />
+            <label htmlFor="livesInProperty" className="text-xs text-zinc-350 cursor-pointer select-none">
+              ¿Usted habita/vive en este inmueble?
+            </label>
+          </div>
+        )}
+
+        {livesHere && (
+          <>
+            {/* Vehículos */}
+            <div className="space-y-3 p-3 bg-zinc-950/40 rounded-xl border border-zinc-800/40">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="hasVehicle"
+                  checked={hasVehicle}
+                  onChange={(e) => setHasVehicle(e.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-850 bg-zinc-950 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                />
+                <label htmlFor="hasVehicle" className="text-xs font-bold text-zinc-250 flex items-center gap-1.5 cursor-pointer select-none">
+                  <span>🚗 ¿Tiene vehículo propio en el conjunto?</span>
+                </label>
+              </div>
+
+              {hasVehicle && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  <div>
+                    <label className="block text-[10px] text-zinc-500 uppercase font-bold mb-1">Tipo</label>
+                    <select
+                      value={vehicleType}
+                      onChange={(e) => setVehicleType(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-200 text-xs focus:outline-none"
+                    >
+                      <option value="Automóvil">Automóvil</option>
+                      <option value="Motocicleta">Motocicleta</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-zinc-500 uppercase font-bold mb-1">Placa *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="ABC123"
+                      value={vehiclePlate}
+                      onChange={(e) => setVehiclePlate(e.target.value.toUpperCase())}
+                      className="w-full px-2.5 py-1 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-200 text-xs uppercase focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-zinc-500 uppercase font-bold mb-1">Marca/Color</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Mazda Gris"
+                      value={vehicleBrand}
+                      onChange={(e) => setVehicleBrand(e.target.value)}
+                      className="w-full px-2.5 py-1 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-200 text-xs focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Mascotas */}
+            <div className="space-y-3 p-3 bg-zinc-950/40 rounded-xl border border-zinc-800/40">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="hasPet"
+                  checked={hasPet}
+                  onChange={(e) => setHasPet(e.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-850 bg-zinc-950 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                />
+                <label htmlFor="hasPet" className="text-xs font-bold text-zinc-250 flex items-center gap-1.5 cursor-pointer select-none">
+                  <span>🐾 ¿Tiene mascotas en el inmueble?</span>
+                </label>
+              </div>
+
+              {hasPet && (
+                <div className="space-y-3 pt-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-zinc-500 uppercase font-bold mb-1">Tipo de Mascota</label>
+                      <select
+                        value={petType}
+                        onChange={(e) => setPetType(e.target.value)}
+                        className="w-full px-2 py-1.5 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-200 text-xs focus:outline-none"
+                      >
+                        <option value="Perro">Perro</option>
+                        <option value="Gato">Gato</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-zinc-500 uppercase font-bold mb-1">Nombre *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej: Toby"
+                        value={petName}
+                        onChange={(e) => setPetName(e.target.value)}
+                        className="w-full px-2.5 py-1 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-200 text-xs focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {petType === 'Otro' && (
+                    <div>
+                      <label className="block text-[10px] text-zinc-500 uppercase font-bold mb-1">Especifique Mascota *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Loro, Conejo, Hamster..."
+                        value={petTypeOther}
+                        onChange={(e) => setPetTypeOther(e.target.value)}
+                        className="w-full px-2.5 py-1 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-200 text-xs focus:outline-none"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[10px] text-zinc-500 uppercase font-bold mb-1">Descripción de Mascota</label>
+                    <input
+                      type="text"
+                      placeholder="Blanco y negro, tamaño mediano, etc."
+                      value={petDescription}
+                      onChange={(e) => setPetDescription(e.target.value)}
+                      className="w-full px-2.5 py-1 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-200 text-xs focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -539,6 +736,7 @@ function RegisterForm() {
                       className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
                     />
                   </div>
+                  {renderVehiclePetFields()}
                 </>
               )}
 
@@ -662,36 +860,39 @@ function RegisterForm() {
 
                 {/* Campos extra de invitación manual */}
                 {activeTab === 'resident' && inviteTenantId && (
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-800/50">
-                    <div>
-                      <label className="block text-xs text-zinc-400 mb-1.5">Seleccione Inmueble *</label>
-                      <select
-                        required
-                        disabled={loading || success}
-                        value={selectedPropertyId}
-                        onChange={(e) => setSelectedPropertyId(e.target.value)}
-                        className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
-                      >
-                        <option value="">-- Elija uno --</option>
-                        {properties.map(p => (
-                          <option key={p.id} value={p.id}>{p.tower} - {p.unit}</option>
-                        ))}
-                      </select>
+                  <>
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-800/50">
+                      <div>
+                        <label className="block text-xs text-zinc-400 mb-1.5">Seleccione Inmueble *</label>
+                        <select
+                          required
+                          disabled={loading || success}
+                          value={selectedPropertyId}
+                          onChange={(e) => setSelectedPropertyId(e.target.value)}
+                          className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
+                        >
+                          <option value="">-- Elija uno --</option>
+                          {properties.map(p => (
+                            <option key={p.id} value={p.id}>{p.tower} - {p.unit}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-400 mb-1.5">Su Rol *</label>
+                        <select
+                          required
+                          disabled={loading || success}
+                          value={propertyRole}
+                          onChange={(e) => setPropertyRole(e.target.value as any)}
+                          className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
+                        >
+                          <option value="owner">Propietario</option>
+                          <option value="inhabitant">Inquilino</option>
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs text-zinc-400 mb-1.5">Su Rol *</label>
-                      <select
-                        required
-                        disabled={loading || success}
-                        value={propertyRole}
-                        onChange={(e) => setPropertyRole(e.target.value as any)}
-                        className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
-                      >
-                        <option value="owner">Propietario</option>
-                        <option value="inhabitant">Inquilino</option>
-                      </select>
-                    </div>
-                  </div>
+                    {renderVehiclePetFields()}
+                  </>
                 )}
 
                 <AnimatePresence>

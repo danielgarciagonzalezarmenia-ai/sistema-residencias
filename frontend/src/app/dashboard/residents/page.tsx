@@ -48,6 +48,20 @@ interface Resident {
   tenantId: string;
   properties: ResidentProperty[];
   createdAt: any;
+  propertyRole?: 'owner' | 'inhabitant';
+  livesInProperty?: boolean;
+  hasVehicle?: boolean;
+  vehicleInfo?: {
+    type: string;
+    plate: string;
+    brand: string;
+  } | null;
+  hasPet?: boolean;
+  petInfo?: {
+    type: string;
+    name: string;
+    description: string;
+  } | null;
 }
 
 interface Property {
@@ -117,6 +131,12 @@ export default function ResidentsPage() {
           tenantId: data.tenantId || '',
           properties: data.properties || [],
           createdAt: data.createdAt,
+          propertyRole: data.propertyRole || 'owner',
+          livesInProperty: data.livesInProperty !== undefined ? data.livesInProperty : true,
+          hasVehicle: !!data.hasVehicle,
+          vehicleInfo: data.vehicleInfo || null,
+          hasPet: !!data.hasPet,
+          petInfo: data.petInfo || null,
         });
       });
       setResidents(residentsList);
@@ -340,13 +360,21 @@ export default function ResidentsPage() {
   });
 
   const handleExportCSV = () => {
-    const headers = ['Nombre', 'Apellido', 'Documento', 'Correo', 'Teléfono', 'Estado', 'Torre', 'Apartamento'];
+    const headers = ['Nombre', 'Apellido', 'Documento', 'Correo', 'Teléfono', 'Rol', '¿Vive allí?', 'Vehículo', 'Placa', 'Marca Vehículo', 'Mascota', 'Nombre Mascota', 'Descr. Mascota', 'Estado', 'Torre', 'Apartamento'];
     const rows = filteredResidents.map((r) => [
       r.firstName,
       r.lastName,
       r.document,
       r.email,
       r.phone,
+      r.propertyRole === 'owner' ? 'Propietario' : 'Inquilino',
+      r.livesInProperty !== false ? 'Sí' : 'No',
+      r.hasVehicle && r.vehicleInfo ? r.vehicleInfo.type : 'No',
+      r.hasVehicle && r.vehicleInfo ? r.vehicleInfo.plate : '—',
+      r.hasVehicle && r.vehicleInfo ? r.vehicleInfo.brand : '—',
+      r.hasPet && r.petInfo ? r.petInfo.type : 'No',
+      r.hasPet && r.petInfo ? r.petInfo.name : '—',
+      r.hasPet && r.petInfo ? r.petInfo.description : '—',
       r.status === 'ACTIVE' ? 'Activo' : r.status === 'PENDING' ? 'Pendiente' : 'Inactivo',
       r.properties.map(p => p.tower).join(' / '),
       r.properties.map(p => p.unit).join(' / ')
@@ -481,7 +509,39 @@ export default function ResidentsPage() {
                 {filteredResidents.map((resident) => (
                   <tr key={resident.id} className="hover:bg-zinc-900/10 transition-colors">
                     <td className="py-3.5 px-4 font-bold text-zinc-200">
-                      {resident.firstName} {resident.lastName}
+                      <div className="flex items-center flex-wrap gap-1.5">
+                        <span>{resident.firstName} {resident.lastName}</span>
+                        {resident.propertyRole && (
+                          <span className={`inline-flex px-1.5 py-0.5 text-[8px] font-extrabold rounded uppercase tracking-wider ${
+                            resident.propertyRole === 'owner'
+                              ? 'text-violet-400 bg-violet-500/10 border border-violet-500/20'
+                              : 'text-sky-400 bg-sky-500/10 border border-sky-500/20'
+                          }`}>
+                            {resident.propertyRole === 'owner' ? 'Propietario' : 'Inquilino'}
+                          </span>
+                        )}
+                        {resident.livesInProperty === false && (
+                          <span className="inline-flex px-1.5 py-0.5 text-[8px] font-extrabold rounded uppercase tracking-wider text-zinc-400 bg-zinc-800 border border-zinc-700">
+                            No vive allí
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Mostrar info de vehículos y mascotas si vive allí y tiene */}
+                      {(resident.hasVehicle || resident.hasPet) && (
+                        <div className="flex flex-col gap-1 mt-1 text-[10px] text-zinc-500 font-medium normal-case">
+                          {resident.hasVehicle && resident.vehicleInfo && (
+                            <span className="flex items-center gap-1">
+                              🚗 {resident.vehicleInfo.type}: <strong className="text-zinc-300 font-semibold">{resident.vehicleInfo.plate}</strong> ({resident.vehicleInfo.brand})
+                            </span>
+                          )}
+                          {resident.hasPet && resident.petInfo && (
+                            <span className="flex items-center gap-1">
+                              🐾 {resident.petInfo.type}: <strong className="text-zinc-300 font-semibold">{resident.petInfo.name}</strong> ({resident.petInfo.description})
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3.5 px-4">{resident.document}</td>
                     <td className="py-3.5 px-4 text-xs">

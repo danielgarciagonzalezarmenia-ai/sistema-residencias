@@ -15,6 +15,7 @@ import {
   serverTimestamp,
   onSnapshot,
   setDoc,
+  getDoc,
 } from 'firebase/firestore';
 import {
   Vote,
@@ -29,6 +30,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { sendEmail } from '../../../lib/mail';
 
 interface VoteOption {
   text: string;
@@ -245,6 +247,49 @@ export default function AssembliesPage() {
         votes: {},
         createdAt: serverTimestamp(),
       });
+
+      // Enviar correo de notificación a todos los residentes activos
+      if (user.tenantId) {
+        (async () => {
+          try {
+            const residentsSnap = await getDocs(query(
+              collection(db, 'residents'),
+              where('tenantId', '==', user.tenantId),
+              where('status', '==', 'ACTIVE')
+            ));
+
+            let tenantName = 'Tu Conjunto';
+            const tenantSnap = await getDoc(doc(db, 'tenants', user.tenantId));
+            if (tenantSnap.exists()) {
+              tenantName = tenantSnap.data().name || 'Tu Conjunto';
+            }
+
+            const emailSubject = `Nueva Votación Disponible: ${pollQuestion}`;
+            const emailMessage = `Estimado(a) residente:\n\nSe ha habilitado una nueva votación en el módulo de Asambleas de tu conjunto residencial:\n\n🗳️ Pregunta: "${pollQuestion}"\n\nPor favor, ingresa a la plataforma ResidentePro para emitir tu voto y participar en la toma de decisiones colectivas de tu copropiedad.\n\nAtentamente,\nLa administración de ${tenantName}`;
+
+            residentsSnap.forEach(async (residentDoc) => {
+              const resData = residentDoc.data();
+              if (resData.email) {
+                try {
+                  await sendEmail({
+                    toEmail: resData.email,
+                    toName: `${resData.firstName || ''} ${resData.lastName || ''}`.trim(),
+                    subject: emailSubject,
+                    message: emailMessage,
+                    fromName: tenantName,
+                    tenantId: user.tenantId,
+                    type: 'general',
+                  });
+                } catch (mailErr) {
+                  console.error('Error al enviar correo de votación a ' + resData.email, mailErr);
+                }
+              }
+            });
+          } catch (mailListErr) {
+            console.error('Error al obtener destinatarios para votación:', mailListErr);
+          }
+        })();
+      }
 
       setSuccessMessage('Votación iniciada con éxito.');
       setPollQuestion('');
