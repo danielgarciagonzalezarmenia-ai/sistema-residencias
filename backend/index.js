@@ -27,27 +27,33 @@ try {
   console.error('❌ Error initializing Firebase Admin:', error);
 }
 
-// ── Crear transporter dinámico por tenant ───────────────
-async function getTransporterForTenant(tenantId) {
-  const tenantDoc = await admin.firestore().collection('tenants').doc(tenantId).get();
-  if (!tenantDoc.exists) {
-    throw new Error('Conjunto no encontrado');
+// ── Obtener Access Token de Gmail API via OAuth2 ──────────
+async function getGmailAccessToken() {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error('El servidor no tiene configuradas las credenciales de Google OAuth2 (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN).');
   }
 
-  const tenantData = tenantDoc.data();
-  if (!tenantData.smtpEmail || !tenantData.smtpPassword) {
-    throw new Error('El administrador no ha configurado el correo de notificaciones. Ve a Configuración > Correo de Notificaciones.');
-  }
-
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: tenantData.smtpEmail,
-      pass: tenantData.smtpPassword,
-    },
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
   });
 
-  return { transporter, senderEmail: tenantData.smtpEmail, tenantName: tenantData.name || 'Tu Conjunto' };
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(`Google OAuth Error: ${data.error_description || data.error || response.statusText}`);
+  }
+
+  return data.access_token;
 }
 
 // ── Endpoint: Enviar correo ─────────────────────────────
@@ -59,15 +65,14 @@ app.post('/send-email', async (req, res) => {
       return res.status(400).json({ error: 'Faltan parámetros: tenantId, subject, body' });
     }
 
-    // Obtener transporter del tenant
-    let transporterInfo;
-    try {
-      transporterInfo = await getTransporterForTenant(tenantId);
-    } catch (err) {
-      return res.status(400).json({ error: err.message });
+    // Obtener información del tenant
+    const tenantDoc = await admin.firestore().collection('tenants').doc(tenantId).get();
+    if (!tenantDoc.exists) {
+      return res.status(404).json({ error: 'Conjunto residencial no encontrado' });
     }
-
-    const { transporter, senderEmail, tenantName } = transporterInfo;
+    const tenantData = tenantDoc.data();
+    const tenantName = tenantData.name || 'Tu Conjunto';
+    const replyToEmail = tenantData.smtpEmail || null;
 
     // Determinar el email del destinatario
     let toEmail = recipientEmail || null;
@@ -277,16 +282,61 @@ app.post('/send-email', async (req, res) => {
     </html>
     `;
 
-    // Enviar correo
-    const info = await transporter.sendMail({
-      from: `"${tenantName} — ResidentePro 🏢" <${senderEmail}>`,
-      to: toEmail,
-      subject: `${config.icon} ${subject}`,
-      html: htmlContent,
+    // 1. Obtener Access Token
+    let accessToken;
+    try {
+      accessToken = await getGmailAccessToken();
+    } catch (tokenErr) {
+      console.error('❌ Error obteniendo Google access token:', tokenErr);
+      return res.status(500).json({ error: 'Error de autenticación con el servidor de correos', details: tokenErr.message });
+    }
+
+    const senderEmail = process.env.GOOGLE_SENDER_EMAIL || 'residentepro.notificaciones@gmail.com';
+
+    // 2. Construir mensaje MIME
+    const mimeParts = [
+      `From: "${tenantName} — ResidentePro 🏢" <${senderEmail}>`,
+      `To: ${toEmail}`,
+      `Subject: =?utf-8?B?${Buffer.from(`${config.icon} ${subject}`).toString('base64')}?=`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/html; charset=utf-8',
+      'Content-Transfer-Encoding: base64',
+    ];
+
+    if (replyToEmail) {
+      mimeParts.push(`Reply-To: ${replyToEmail}`);
+    }
+
+    mimeParts.push('', Buffer.from(htmlContent).toString('base64'));
+    const rawMime = mimeParts.join('\r\n');
+
+    // 3. Codificar en base64url compatible con Gmail API
+    const base64SafeEmail = Buffer.from(rawMime)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    // 4. Enviar mediante Gmail API
+    const gmailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        raw: base64SafeEmail,
+      }),
     });
 
-    console.log(`📧 Correo enviado a ${toEmail} desde ${senderEmail}: ${info.messageId}`);
-    res.status(200).json({ success: true, messageId: info.messageId });
+    const gmailData = await gmailResponse.json();
+
+    if (!gmailResponse.ok) {
+      throw new Error(`Gmail API send failed: ${gmailData.error?.message || gmailResponse.statusText}`);
+    }
+
+    console.log(`📧 Correo enviado a ${toEmail} desde ${senderEmail} (Gmail API): ${gmailData.id}`);
+    res.status(200).json({ success: true, messageId: gmailData.id });
 
   } catch (error) {
     console.error('❌ Error enviando correo:', error);
