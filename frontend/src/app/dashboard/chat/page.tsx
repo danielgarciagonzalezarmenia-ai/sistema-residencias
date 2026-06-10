@@ -116,6 +116,28 @@ export default function ChatPage() {
         senderRole: activeRole,
         timestamp: serverTimestamp(),
       });
+
+      // Llamar al backend de notificaciones (Render)
+      const isResidentSending = !isAdmin;
+      const recipientId = isResidentSending ? 'ADMIN' : selectedResident.id;
+      const senderName = isResidentSending 
+        ? `${user.firstName || 'Residente'} ${user.lastName || ''}`.trim()
+        : 'Administración';
+
+      // Cambia esta URL a la de tu servidor de Render en producción
+      const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-production-1d9b.up.railway.app';
+      
+      fetch(`${BACKEND_URL}/send-notification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientId,
+          tenantId: user.tenantId,
+          title: `Nuevo mensaje de ${senderName}`,
+          body: msgText,
+        })
+      }).catch(err => console.error('Error triggering push:', err));
+
     } catch (e) {
       console.error('Error sending message:', e);
     }
