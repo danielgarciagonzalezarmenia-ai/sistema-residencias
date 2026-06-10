@@ -58,6 +58,15 @@ async function getGmailAccessToken() {
 
 // ── Endpoint: Enviar correo ─────────────────────────────
 // ── Helper: Enviar correo (Compartido por Endpoint y Cron) ──
+function removeAccents(str) {
+  if (!str) return '';
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ñ/g, "n")
+    .replace(/Ñ/g, "N");
+}
+
 async function sendEmailHelper({ recipientId, recipientEmail, tenantId, subject, body, type, metadata = {} }) {
   if (!tenantId || !subject || !body) {
     throw new Error('Faltan parámetros: tenantId, subject, body');
@@ -333,12 +342,16 @@ async function sendEmailHelper({ recipientId, recipientEmail, tenantId, subject,
   const senderEmail = process.env.GOOGLE_SENDER_EMAIL || 'residentepro.notificaciones@gmail.com';
 
   // 2. Construir mensaje MIME
-  const encodedDisplayName = `=?utf-8?B?${Buffer.from(tenantName).toString('base64')}?=`;
+  const cleanTenantName = removeAccents(tenantName);
+  const cleanSubject = removeAccents(subject);
+  const cleanHtmlContent = removeAccents(htmlContent);
+
+  const encodedDisplayName = `=?utf-8?B?${Buffer.from(cleanTenantName).toString('base64')}?=`;
 
   const mimeParts = [
     `From: ${encodedDisplayName} <${senderEmail}>`,
     `To: ${toEmail}`,
-    `Subject: =?utf-8?B?${Buffer.from(`${config.icon} ${subject}`).toString('base64')}?=`,
+    `Subject: =?utf-8?B?${Buffer.from(`${config.icon} ${cleanSubject}`).toString('base64')}?=`,
     'MIME-Version: 1.0',
     'Content-Type: text/html; charset=utf-8',
     'Content-Transfer-Encoding: base64',
@@ -348,7 +361,7 @@ async function sendEmailHelper({ recipientId, recipientEmail, tenantId, subject,
     mimeParts.push(`Reply-To: ${replyToEmail}`);
   }
 
-  mimeParts.push('', Buffer.from(htmlContent).toString('base64'));
+  mimeParts.push('', Buffer.from(cleanHtmlContent).toString('base64'));
   const rawMime = mimeParts.join('\r\n');
 
   // 3. Codificar en base64url compatible con Gmail API
