@@ -125,7 +125,7 @@ export default function ChatPage() {
         : 'Administración';
 
       // Cambia esta URL a la de tu servidor de Render en producción
-      const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-production-1d9b.up.railway.app';
+      const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://notificaciones-residentepro2.onrender.com';
       
       fetch(`${BACKEND_URL}/send-notification`, {
         method: 'POST',
