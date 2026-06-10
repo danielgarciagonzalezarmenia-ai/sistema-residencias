@@ -59,7 +59,7 @@ interface SendProgressLog {
   email: string;
   name: string;
   status: 'pending' | 'success' | 'error';
-  mode?: 'backend' | 'emailjs' | 'demo' | 'real';
+  mode?: 'backend' | 'demo';
   errorMsg?: string;
 }
 
@@ -584,7 +584,7 @@ export default function AnnouncementsPage() {
                     className="h-4 w-4 bg-zinc-950 border border-zinc-800 rounded text-violet-600 focus:ring-violet-500"
                   />
                   <label htmlFor="sendMail" className="text-xs text-zinc-300 cursor-pointer select-none">
-                    Notificar por Correo ElectrÃ³nico (vÃ­a EmailJS)
+                    Notificar por Correo Electrónico (Gmail de la Administración)
                   </label>
                 </div>
 

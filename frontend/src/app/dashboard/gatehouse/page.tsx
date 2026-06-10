@@ -405,9 +405,9 @@ export default function GatehousePage() {
         createdAt: serverTimestamp(),
       });
 
-      // 4. Enviar correo al residente
+      // 4. Enviar correo al residente en segundo plano (asíncrono, sin bloquear la interfaz)
       if (resident.email) {
-        await sendEmail({
+        sendEmail({
           toEmail: resident.email,
           toName: `${resident.firstName} ${resident.lastName}`,
           subject: `📦 Llegó un paquete de ${pkgCarrier} para ti`,
@@ -420,11 +420,14 @@ export default function GatehousePage() {
             notes: pkgNotes || 'Ninguna',
             date: new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }),
           },
-        });
+        }).catch((err) => console.error('Error enviando correo de paquete:', err));
       }
 
-      // Reset
-      setPkgGuide(''); setPkgResidentId(''); setPkgNotes(''); setPkgCarrier('Servientrega');
+      // Reset y cerrar modal de inmediato
+      setPkgGuide('');
+      setPkgResidentId('');
+      setPkgNotes('');
+      setPkgCarrier('Servientrega');
       setIsPkgOpen(false);
       await loadPackages();
     } catch (err: any) {
