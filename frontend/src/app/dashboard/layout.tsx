@@ -42,6 +42,7 @@ import {
   CreditCard,
   AlertCircle,
   Mail,
+  MessageSquare,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -140,6 +141,12 @@ const ALL_MENU_ITEMS: MenuItem[] = [
     href: '/dashboard/gmails',
     icon: <Mail className="h-5 w-5" />,
     roles: ['ADMINISTRADOR', 'PORTERÍA'],
+  },
+  {
+    name: 'Chat',
+    href: '/dashboard/chat',
+    icon: <MessageSquare className="h-5 w-5" />,
+    roles: ['ADMINISTRADOR', 'RESIDENTE'],
   },
   {
     name: 'Suscripción SaaS',
