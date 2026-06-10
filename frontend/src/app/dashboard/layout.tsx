@@ -416,15 +416,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (loading || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-zinc-100">
-        <div className="relative">
-          <div className="h-16 w-16 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center mb-6">
+        <div className="relative mb-6 flex items-center justify-center h-20 w-20">
+          {/* Spinner concentric to building, perfectly centered */}
+          <div className="absolute inset-0 rounded-full border-2 border-t-violet-500 border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+          
+          <div className="h-16 w-16 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
             <Building2 className="h-8 w-8 text-violet-400" />
           </div>
-          <div className="absolute -bottom-1 -right-1">
-            <Loader2 className="h-5 w-5 text-violet-500 animate-spin" />
-          </div>
         </div>
-        <p className="text-sm text-zinc-400 font-medium">Verificando sesión...</p>
+        <p className="text-sm text-zinc-400 font-medium">Verificando sesion...</p>
       </div>
     );
   }
