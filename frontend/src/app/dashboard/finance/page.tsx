@@ -29,6 +29,8 @@ import {
   Settings,
   AlertCircle,
   FileText,
+  Eye,
+  X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -42,6 +44,7 @@ interface PaymentReport {
   reference: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   notes?: string;
+  attachmentUrl?: string;
   createdAt: any;
 }
 
@@ -60,6 +63,10 @@ export default function FinancePage() {
   const [reportAmount, setReportAmount] = useState('');
   const [reportReference, setReportReference] = useState('');
   const [reportNotes, setReportNotes] = useState('');
+  const [reportAttachment, setReportAttachment] = useState<string>('');
+  const [selectedAttachmentUrl, setSelectedAttachmentUrl] = useState<string | null>(null);
+  const [adminFee, setAdminFee] = useState<number>(250000);
+  const [newAdminFee, setNewAdminFee] = useState<number>(250000);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -74,6 +81,9 @@ export default function FinancePage() {
         const link = settingsDoc.data().pseLink || '';
         setPseLink(link);
         setNewPseLink(link);
+        const fee = settingsDoc.data().adminFee || 250000;
+        setAdminFee(fee);
+        setNewAdminFee(fee);
       }
 
       // 2. Cargar reportes de pagos
@@ -130,8 +140,10 @@ export default function FinancePage() {
     try {
       await setDoc(doc(db, 'tenants', user.tenantId, 'settings', 'finance'), {
         pseLink: newPseLink,
+        adminFee: Number(newAdminFee),
       }, { merge: true });
       setPseLink(newPseLink);
+      setAdminFee(Number(newAdminFee));
       setSuccessMessage('Enlace de PSE actualizado exitosamente.');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
@@ -139,6 +151,23 @@ export default function FinancePage() {
       setErrorMessage('Error al guardar el enlace.');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        setErrorMessage('El archivo no debe superar los 2MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReportAttachment(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setReportAttachment('');
     }
   };
 
@@ -170,10 +199,12 @@ export default function FinancePage() {
         reference: reportReference,
         status: 'PENDING',
         notes: reportNotes,
+        attachmentUrl: reportAttachment,
         createdAt: serverTimestamp(),
       });
 
       setSuccessMessage('Pago reportado exitosamente. Esperando aprobación.');
+      setReportAttachment('');
       setReportAmount('');
       setReportReference('');
       setReportNotes('');
@@ -283,6 +314,20 @@ export default function FinancePage() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+                    Valor Cuota Administración (COP)
+                  </label>
+                  <input
+                    type="number"
+                    value={newAdminFee}
+                    onChange={(e) => setNewAdminFee(Number(e.target.value))}
+                    placeholder="Ej. 250000"
+                    required
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2 text-xs text-zinc-200 focus:outline-none focus:border-violet-500/50 transition-all"
+                  />
+                </div>
+
                 <button
                   type="submit"
                   disabled={actionLoading}
@@ -306,7 +351,7 @@ export default function FinancePage() {
                 </div>
                 <p className="text-2xl font-bold text-zinc-150">Al Día</p>
                 <p className="text-[10px] text-zinc-500 mt-1.5 leading-relaxed">
-                  Próxima cuota de administración sugerida: $250.000 COP.
+                  Próxima cuota de administración sugerida: {adminFee.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 })}.
                 </p>
 
                 <div className="mt-5">
@@ -383,6 +428,18 @@ export default function FinancePage() {
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
+                      Comprobante / Captura (Max 2MB)
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={handleFileChange}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2 text-xs text-zinc-200 focus:outline-none focus:border-violet-500/50 transition-all file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-violet-500/20 file:text-violet-400 hover:file:bg-violet-500/30"
+                    />
+                  </div>
+
                   <button
                     type="submit"
                     disabled={actionLoading}
@@ -451,6 +508,16 @@ export default function FinancePage() {
                         </p>
                       )}
 
+                      {pay.attachmentUrl && (
+                        <button
+                          onClick={() => setSelectedAttachmentUrl(pay.attachmentUrl!)}
+                          className="text-[10px] text-violet-400 hover:text-violet-300 font-bold flex items-center space-x-1"
+                        >
+                          <Eye className="h-3 w-3" />
+                          <span>Ver Comprobante</span>
+                        </button>
+                      )}
+
                       <span className="text-[9px] text-zinc-600 block">
                         {pay.createdAt?.seconds
                           ? new Date(pay.createdAt.seconds * 1000).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -506,6 +573,45 @@ export default function FinancePage() {
         </div>
 
       </div>
+
+      {/* Modal para ver captura */}
+      <AnimatePresence>
+        {selectedAttachmentUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 w-full max-w-2xl relative shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+            >
+              <button
+                onClick={() => setSelectedAttachmentUrl(null)}
+                className="absolute top-4 right-4 text-zinc-400 hover:text-white bg-zinc-800/50 hover:bg-zinc-700/50 p-2 rounded-full transition-all z-10"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="mb-4 shrink-0">
+                <h3 className="text-lg font-bold text-white flex items-center space-x-2">
+                  <FileText className="h-5 w-5 text-violet-400" />
+                  <span>Comprobante Adjunto</span>
+                </h3>
+              </div>
+              <div className="flex justify-center bg-zinc-950 rounded-xl overflow-auto flex-1 p-2">
+                {selectedAttachmentUrl.startsWith('data:application/pdf') ? (
+                  <iframe src={selectedAttachmentUrl} className="w-full h-full min-h-[50vh] rounded-xl" title="Comprobante PDF" />
+                ) : (
+                  <img src={selectedAttachmentUrl} alt="Comprobante de pago" className="max-w-full h-auto object-contain" />
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

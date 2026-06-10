@@ -22,8 +22,10 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
+  Mail,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { sendEmail } from '../../../lib/mail';
 
 interface ResidentProperty {
   id: string;
@@ -75,6 +77,15 @@ export default function ResidentsPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [propertyRole, setPropertyRole] = useState<'owner' | 'inhabitant'>('owner');
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Estados para envío de correo personalizado
+  const [isMailOpen, setIsMailOpen] = useState(false);
+  const [mailTargetResident, setMailTargetResident] = useState<Resident | null>(null);
+  const [mailSubject, setMailSubject] = useState('');
+  const [mailMessage, setMailMessage] = useState('');
+  const [mailSubmitting, setMailSubmitting] = useState(false);
+  const [mailSuccess, setMailSuccess] = useState<string | null>(null);
+  const [mailError, setMailError] = useState<string | null>(null);
 
   const loadData = async () => {
     if (!user?.tenantId) return;
@@ -221,6 +232,38 @@ export default function ResidentsPage() {
       await loadData();
     } catch (err: any) {
       alert(`Error al desactivar: ${err.message}`);
+    }
+  };
+
+  const handleSendCustomMail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mailTargetResident || !mailSubject || !mailMessage) return;
+
+    setMailSubmitting(true);
+    setMailError(null);
+    setMailSuccess(null);
+
+    try {
+      const result = await sendEmail({
+        toEmail: mailTargetResident.email,
+        toName: `${mailTargetResident.firstName} ${mailTargetResident.lastName}`,
+        subject: mailSubject,
+        message: mailMessage,
+      });
+
+      setMailSuccess(result.message || 'Correo enviado exitosamente.');
+      setMailSubject('');
+      setMailMessage('');
+      setTimeout(() => {
+        setIsMailOpen(false);
+        setMailSuccess(null);
+        setMailTargetResident(null);
+      }, 2000);
+    } catch (err: any) {
+      console.error(err);
+      setMailError(err.message || 'Error al enviar el correo.');
+    } finally {
+      setMailSubmitting(false);
     }
   };
 
@@ -376,6 +419,16 @@ export default function ResidentsPage() {
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={() => {
+                            setMailTargetResident(resident);
+                            setIsMailOpen(true);
+                          }}
+                          className="p-1.5 hover:bg-violet-500/10 rounded-lg text-zinc-400 hover:text-violet-400 transition-colors"
+                          title="Enviar correo personalizado"
+                        >
+                          <Mail className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={() => handleToggleStatus(resident.id, resident.status)}
                           className="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-200 transition-colors"
@@ -535,6 +588,113 @@ export default function ResidentsPage() {
                   >
                     {isSubmitting && <Loader2 className="h-3 w-3 animate-spin" />}
                     <span>Guardar Residente</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Mail Modal */}
+      <AnimatePresence>
+        {isMailOpen && mailTargetResident && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setIsMailOpen(false);
+                setMailTargetResident(null);
+                setMailError(null);
+                setMailSuccess(null);
+              }}
+              className="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl relative z-10 space-y-4"
+            >
+              <div>
+                <h3 className="text-lg font-bold text-zinc-100 flex items-center space-x-2">
+                  <Mail className="h-5 w-5 text-violet-400" />
+                  <span>Enviar Correo Personalizado</span>
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1">
+                  Redacte un mensaje personalizado para enviar directamente a este habitante/propietario.
+                </p>
+              </div>
+
+              {mailSuccess && (
+                <div className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-xs font-semibold">
+                  {mailSuccess}
+                </div>
+              )}
+
+              {mailError && (
+                <div className="p-3 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-455 text-xs font-semibold">
+                  {mailError}
+                </div>
+              )}
+
+              <form onSubmit={handleSendCustomMail} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Destinatario</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${mailTargetResident.firstName} ${mailTargetResident.lastName} (${mailTargetResident.email})`}
+                    className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800/80 rounded-xl text-zinc-400 text-xs focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Asunto / Título *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Recordatorio importante de administración"
+                    value={mailSubject}
+                    onChange={(e) => setMailSubject(e.target.value)}
+                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/50 transition-colors text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-1.5">Mensaje *</label>
+                  <textarea
+                    required
+                    placeholder="Redacte su mensaje aquí..."
+                    rows={5}
+                    value={mailMessage}
+                    onChange={(e) => setMailMessage(e.target.value)}
+                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/50 transition-colors text-xs resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end space-x-3 pt-4 border-t border-zinc-850">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMailOpen(false);
+                      setMailTargetResident(null);
+                      setMailError(null);
+                      setMailSuccess(null);
+                    }}
+                    className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={mailSubmitting}
+                    className="px-4 py-2 text-xs font-medium text-white bg-violet-600 hover:bg-violet-550 rounded-xl transition-all shadow-lg shadow-violet-600/10 flex items-center space-x-1.5"
+                  >
+                    {mailSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    <span>Enviar Correo</span>
                   </button>
                 </div>
               </form>

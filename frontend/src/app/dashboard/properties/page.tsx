@@ -9,9 +9,10 @@ import {
 import {
   Building, Home, Plus, Loader2, Users, ChevronRight, ArrowLeft,
   Search, CheckCircle2, XCircle, Eye, Sparkles, Hash, Layers,
-  UserCheck, User, X, AlertCircle, ChevronDown,
+  UserCheck, User, X, AlertCircle, ChevronDown, Mail,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { sendEmail } from '../../../lib/mail';
 
 // ─── TIPOS ─────────────────────────────────────────────────────────────────
 interface Property {
@@ -540,6 +541,60 @@ export default function PropertiesPage() {
   // Saving state para dropdowns
   const [savingId, setSavingId] = useState<string | null>(null);
 
+  // Estados para envío de correo personalizado
+  const [isMailOpen, setIsMailOpen] = useState(false);
+  const [mailTargetName, setMailTargetName] = useState('');
+  const [mailTargetEmail, setMailTargetEmail] = useState('');
+  const [mailSubject, setMailSubject] = useState('');
+  const [mailMessage, setMailMessage] = useState('');
+  const [mailSubmitting, setMailSubmitting] = useState(false);
+  const [mailSuccess, setMailSuccess] = useState<string | null>(null);
+  const [mailError, setMailError] = useState<string | null>(null);
+
+  const handleOpenMail = (residentId: string, role: 'owner' | 'inhabitant') => {
+    const resident = residents.find(r => r.id === residentId);
+    if (resident) {
+      setMailTargetName(`${resident.firstName} ${resident.lastName} (${role === 'owner' ? 'Propietario' : 'Habitante'})`);
+      setMailTargetEmail(resident.email);
+      setMailSubject('');
+      setMailMessage('');
+      setMailError(null);
+      setMailSuccess(null);
+      setIsMailOpen(true);
+    }
+  };
+
+  const handleSendCustomMail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mailTargetEmail || !mailSubject || !mailMessage) return;
+
+    setMailSubmitting(true);
+    setMailError(null);
+    setMailSuccess(null);
+
+    try {
+      const result = await sendEmail({
+        toEmail: mailTargetEmail,
+        toName: mailTargetName,
+        subject: mailSubject,
+        message: mailMessage,
+      });
+
+      setMailSuccess(result.message || 'Correo enviado exitosamente.');
+      setMailSubject('');
+      setMailMessage('');
+      setTimeout(() => {
+        setIsMailOpen(false);
+        setMailSuccess(null);
+      }, 2000);
+    } catch (err: any) {
+      console.error(err);
+      setMailError(err.message || 'Error al enviar el correo.');
+    } finally {
+      setMailSubmitting(false);
+    }
+  };
+
   // ── Cargar datos ───────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     if (!user?.tenantId) return;
@@ -878,6 +933,7 @@ export default function PropertiesPage() {
                             unit={unit}
                             residents={residents}
                             onAssign={handleAssign}
+                            onOpenMail={handleOpenMail}
                             saving={savingId}
                           />
                         ))}
@@ -894,6 +950,7 @@ export default function PropertiesPage() {
                       unit={unit}
                       residents={residents}
                       onAssign={handleAssign}
+                      onOpenMail={handleOpenMail}
                       saving={savingId}
                     />
                   ))}
@@ -914,17 +971,127 @@ export default function PropertiesPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Mail Modal */}
+      <AnimatePresence>
+        {isMailOpen && mailTargetEmail && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setIsMailOpen(false);
+                setMailTargetEmail('');
+                setMailTargetName('');
+                setMailError(null);
+                setMailSuccess(null);
+              }}
+              className="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl relative z-10 space-y-4"
+            >
+              <div>
+                <h3 className="text-lg font-bold text-zinc-100 flex items-center space-x-2">
+                  <Mail className="h-5 w-5 text-violet-400" />
+                  <span>Enviar Correo Personalizado</span>
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1">
+                  Redacte un mensaje personalizado para enviar directamente a este habitante/propietario.
+                </p>
+              </div>
+
+              {mailSuccess && (
+                <div className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-xs font-semibold">
+                  {mailSuccess}
+                </div>
+              )}
+
+              {mailError && (
+                <div className="p-3 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-455 text-xs font-semibold">
+                  {mailError}
+                </div>
+              )}
+
+              <form onSubmit={handleSendCustomMail} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Destinatario</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${mailTargetName} (${mailTargetEmail})`}
+                    className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800/80 rounded-xl text-zinc-400 text-xs focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Asunto / Título *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Recordatorio importante de administración"
+                    value={mailSubject}
+                    onChange={(e) => setMailSubject(e.target.value)}
+                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/50 transition-colors text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-1.5">Mensaje *</label>
+                  <textarea
+                    required
+                    placeholder="Redacte su mensaje aquí..."
+                    rows={5}
+                    value={mailMessage}
+                    onChange={(e) => setMailMessage(e.target.value)}
+                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/50 transition-colors text-xs resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end space-x-3 pt-4 border-t border-zinc-850">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMailOpen(false);
+                      setMailTargetEmail('');
+                      setMailTargetName('');
+                      setMailError(null);
+                      setMailSuccess(null);
+                    }}
+                    className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={mailSubmitting}
+                    className="px-4 py-2 text-xs font-medium text-white bg-violet-600 hover:bg-violet-550 rounded-xl transition-all shadow-lg shadow-violet-600/10 flex items-center space-x-1.5"
+                  >
+                    {mailSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    <span>Enviar Correo</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 // ─── UNIT CARD ─────────────────────────────────────────────────────────────
 function UnitCard({
-  unit, residents, onAssign, saving,
+  unit, residents, onAssign, onOpenMail, saving,
 }: {
   unit: Property;
   residents: ResidentOption[];
   onAssign: (id: string, field: 'owner' | 'inhabitant', resId: string | null, name: string | null) => void;
+  onOpenMail: (residentId: string, role: 'owner' | 'inhabitant') => void;
   saving: string | null;
 }) {
   const isOccupied = unit.status === 'OCCUPIED';
@@ -976,18 +1143,48 @@ function UnitCard({
           </div>
         ) : (
           <>
-            <ResidentDropdown
-              label="👤 Propietario"
-              value={{ id: unit.ownerId, name: unit.ownerName }}
-              residents={residents}
-              onSelect={(id, name) => onAssign(unit.id, 'owner', id, name)}
-            />
-            <ResidentDropdown
-              label="🏠 Habitante / Arrendatario"
-              value={{ id: unit.inhabitantId, name: unit.inhabitantName }}
-              residents={residents}
-              onSelect={(id, name) => onAssign(unit.id, 'inhabitant', id, name)}
-            />
+            <div className="flex items-end space-x-2">
+              <div className="flex-1">
+                <ResidentDropdown
+                  label="👤 Propietario"
+                  value={{ id: unit.ownerId, name: unit.ownerName }}
+                  residents={residents}
+                  onSelect={(id, name) => onAssign(unit.id, 'owner', id, name)}
+                />
+              </div>
+              {unit.ownerId && (
+                <button
+                  type="button"
+                  onClick={() => onOpenMail(unit.ownerId!, 'owner')}
+                  className="p-2 px-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:text-violet-400 hover:border-violet-500/30 transition-all shrink-0 mb-[1px]"
+                  title="Enviar correo personalizado al propietario"
+                >
+                  <Mail className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-end space-x-2">
+              <div className="flex-1">
+                <ResidentDropdown
+                  label="🏠 Habitante / Arrendatario"
+                  value={{ id: unit.inhabitantId, name: unit.inhabitantName }}
+                  residents={residents}
+                  onSelect={(id, name) => onAssign(unit.id, 'inhabitant', id, name)}
+                />
+              </div>
+              {unit.inhabitantId && (
+                <button
+                  type="button"
+                  onClick={() => onOpenMail(unit.inhabitantId!, 'inhabitant')}
+                  className="p-2 px-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:text-violet-400 hover:border-violet-500/30 transition-all shrink-0 mb-[1px]"
+                  title="Enviar correo personalizado al habitante"
+                >
+                  <Mail className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
             {!unit.inhabitantId && unit.ownerId && (
               <p className="text-[10px] text-zinc-600 italic pl-1">
                 Sin habitante → se asume que el propietario reside aquí

@@ -12,6 +12,8 @@ import {
   deleteDoc,
   doc,
   serverTimestamp,
+  getDoc,
+  setDoc,
 } from 'firebase/firestore';
 import {
   CalendarDays,
@@ -28,8 +30,13 @@ import {
   MapPin,
   User,
   Home,
+  Building2,
+  Utensils,
+  Trophy,
+  Dumbbell,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Edit2, Save, X } from 'lucide-react';
 
 // --- ESPACIOS COMUNES ---
 interface CommonSpace {
@@ -37,7 +44,7 @@ interface CommonSpace {
   name: string;
   description: string;
   capacity: string;
-  icon: string;
+  icon: React.ReactNode;
 }
 
 const SPACES: CommonSpace[] = [
@@ -46,28 +53,28 @@ const SPACES: CommonSpace[] = [
     name: 'Salón Social',
     description: 'Espacio cerrado ideal para reuniones, fiestas de cumpleaños y eventos familiares.',
     capacity: '80 personas',
-    icon: '🏢',
+    icon: <Building2 className="h-6 w-6 text-violet-400" />,
   },
   {
     id: 'zona-bbq',
     name: 'Zona BBQ',
     description: 'Área al aire libre equipada con asador, mesas y lavaplatos para tus reuniones.',
     capacity: '20 personas',
-    icon: '🥩',
+    icon: <Utensils className="h-6 w-6 text-violet-400" />,
   },
   {
     id: 'cancha-sintetica',
     name: 'Cancha Sintética',
     description: 'Cancha de fútbol 5 para prácticas deportivas, torneos y recreación familiar.',
     capacity: '12 personas',
-    icon: '⚽',
+    icon: <Trophy className="h-6 w-6 text-violet-400" />,
   },
   {
     id: 'gimnasio',
     name: 'Gimnasio',
     description: 'Equipado con máquinas cardiovasculares y de peso para rutinas de acondicionamiento.',
     capacity: '8 personas',
-    icon: '💪',
+    icon: <Dumbbell className="h-6 w-6 text-violet-400" />,
   },
 ];
 
@@ -86,7 +93,11 @@ interface Reservation {
 }
 
 export default function ReservationsPage() {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
+  const currentRole = activeRole || user?.role || '';
+  const isAdmin = currentRole === 'ADMINISTRADOR';
+
+  const [spacesList, setSpacesList] = useState<CommonSpace[]>(SPACES);
   const [selectedSpace, setSelectedSpace] = useState<CommonSpace>(SPACES[0]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,6 +117,11 @@ export default function ReservationsPage() {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Edit capacity state
+  const [isEditingCapacity, setIsEditingCapacity] = useState(false);
+  const [newCapacity, setNewCapacity] = useState('');
+  const [updatingCapacity, setUpdatingCapacity] = useState(false);
 
   // Cargar unidad de residente
   useEffect(() => {
@@ -169,15 +185,55 @@ export default function ReservationsPage() {
     }
   }, [user]);
 
+  const loadSettings = useCallback(async () => {
+    if (!user?.tenantId) return;
+    try {
+      const settingsDoc = await getDoc(doc(db, 'tenants', user.tenantId, 'settings', 'reservations'));
+      if (settingsDoc.exists()) {
+        const capacity = settingsDoc.data().salonCapacity || '80 personas';
+        setSpacesList((prev) =>
+          prev.map((s) => (s.id === 'salon-social' ? { ...s, capacity } : s))
+        );
+        setSelectedSpace((prev) => (prev.id === 'salon-social' ? { ...prev, capacity } : prev));
+      }
+    } catch (e) {
+      console.error('Error al cargar config de reservas:', e);
+    }
+  }, [user]);
+
   useEffect(() => {
     loadReservations();
+    loadSettings();
     // Set default selected date as today
     const today = new Date();
     const y = today.getFullYear();
     const m = String(today.getMonth() + 1).padStart(2, '0');
     const d = String(today.getDate()).padStart(2, '0');
     setSelectedDateStr(`${y}-${m}-${d}`);
-  }, [loadReservations]);
+  }, [loadReservations, loadSettings]);
+
+  const handleSaveCapacity = async () => {
+    if (!user?.tenantId) return;
+    if (!newCapacity.trim()) return;
+    setUpdatingCapacity(true);
+    try {
+      await setDoc(
+        doc(db, 'tenants', user.tenantId, 'settings', 'reservations'),
+        { salonCapacity: newCapacity },
+        { merge: true }
+      );
+      setSpacesList((prev) =>
+        prev.map((s) => (s.id === 'salon-social' ? { ...s, capacity: newCapacity } : s))
+      );
+      setSelectedSpace((prev) => (prev.id === 'salon-social' ? { ...prev, capacity: newCapacity } : prev));
+      setIsEditingCapacity(false);
+    } catch (e) {
+      console.error(e);
+      alert('Error al guardar la capacidad');
+    } finally {
+      setUpdatingCapacity(false);
+    }
+  };
 
   // Cambiar mes del calendario
   const handlePrevMonth = () => {
@@ -277,7 +333,7 @@ export default function ReservationsPage() {
       setNotes('');
       // Crear notificación
       await addDoc(collection(db, 'notifications'), {
-        title: `📅 Nueva Reserva - ${selectedSpace.name}`,
+        title: `Nueva Reserva - ${selectedSpace.name}`,
         body: `Se ha registrado una reserva para el ${selectedDateStr} de ${startTime} a ${endTime} (${residentUnit}).`,
         type: 'general',
         isRead: false,
@@ -341,7 +397,7 @@ export default function ReservationsPage() {
 
       {/* Selector de Espacio Común */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {SPACES.map((space) => {
+        {spacesList.map((space) => {
           const isSelected = selectedSpace.id === space.id;
           return (
             <button
@@ -375,10 +431,44 @@ export default function ReservationsPage() {
             <div>
               <h3 className="text-xs font-bold text-zinc-200 uppercase tracking-wider">{selectedSpace.name}</h3>
               <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{selectedSpace.description}</p>
-              <div className="flex flex-wrap gap-4 mt-2 text-[10px] text-zinc-500 font-semibold">
+              <div className="flex flex-wrap gap-4 mt-2 text-[10px] text-zinc-500 font-semibold items-center">
                 <span className="flex items-center space-x-1">
                   <User className="h-3 w-3 text-violet-400" />
-                  <span>Capacidad: {selectedSpace.capacity}</span>
+                  {isEditingCapacity && selectedSpace.id === 'salon-social' ? (
+                    <div className="flex items-center space-x-2">
+                      <span>Capacidad:</span>
+                      <input
+                        type="text"
+                        value={newCapacity}
+                        onChange={(e) => setNewCapacity(e.target.value)}
+                        className="bg-zinc-950 border border-zinc-800 rounded px-2 py-0.5 text-xs text-white focus:outline-none focus:border-violet-500 w-28"
+                        placeholder="Ej. 100 personas"
+                        autoFocus
+                      />
+                      <button onClick={handleSaveCapacity} disabled={updatingCapacity} className="text-emerald-400 hover:text-emerald-300">
+                        {updatingCapacity ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                      </button>
+                      <button onClick={() => setIsEditingCapacity(false)} className="text-zinc-400 hover:text-white">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <span>Capacidad: {selectedSpace.capacity}</span>
+                      {isAdmin && selectedSpace.id === 'salon-social' && (
+                        <button
+                          onClick={() => {
+                            setNewCapacity(selectedSpace.capacity);
+                            setIsEditingCapacity(true);
+                          }}
+                          className="text-violet-400 hover:text-violet-300 transition-colors"
+                          title="Editar Capacidad"
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </span>
               </div>
             </div>

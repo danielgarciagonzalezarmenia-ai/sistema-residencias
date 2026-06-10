@@ -41,6 +41,7 @@ import {
   Vote,
   CreditCard,
   AlertCircle,
+  Mail,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -132,6 +133,12 @@ const ALL_MENU_ITEMS: MenuItem[] = [
     name: 'Portería',
     href: '/dashboard/gatehouse',
     icon: <Shield className="h-5 w-5" />,
+    roles: ['ADMINISTRADOR', 'PORTERÍA'],
+  },
+  {
+    name: 'Gmails',
+    href: '/dashboard/gmails',
+    icon: <Mail className="h-5 w-5" />,
     roles: ['ADMINISTRADOR', 'PORTERÍA'],
   },
   {
