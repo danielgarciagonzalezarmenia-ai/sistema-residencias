@@ -5,10 +5,13 @@ import { useRouter } from 'next/navigation';
 import { auth, db } from '../lib/firebase';
 import {
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   onAuthStateChanged,
   User as FirebaseUser,
+  UserCredential,
 } from 'firebase/auth';
+import { googleProvider } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
 interface UserProfile {
@@ -25,9 +28,11 @@ interface AuthContextType {
   activeRole: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGooglePopup: () => Promise<UserCredential>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   switchRole: (role: string) => void;
+  reloadUserProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,47 +43,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  const loadUserFromFirestore = async (firebaseUser: FirebaseUser) => {
+    try {
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const data = userDocSnap.data();
+        const baseRole = data.role || 'RESIDENTE';
+
+        let initialActiveRole = baseRole;
+        if (baseRole === 'ADMINISTRADOR') {
+          const storedRole = localStorage.getItem(`activeRole_${firebaseUser.uid}`);
+          if (storedRole === 'PORTERÍA') {
+            initialActiveRole = 'PORTERÍA';
+          }
+        }
+
+        setUser({
+          id: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          role: baseRole,
+          tenantId: data.tenantId || '',
+        });
+        setActiveRole(initialActiveRole);
+      } else {
+        console.error('No se encontró el documento de perfil del usuario en Firestore');
+        setUser(null);
+        setActiveRole(null);
+      }
+    } catch (e) {
+      console.error('Error al cargar perfil de usuario de Firestore:', e);
+      setUser(null);
+      setActiveRole(null);
+    }
+  };
+
   useEffect(() => {
-    // Escuchar el estado de autenticación de Firebase en tiempo real
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        try {
-          // Consultar el perfil del usuario en Firestore para obtener rol y tenantId
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDocSnap = await getDoc(userDocRef);
-
-          if (userDocSnap.exists()) {
-            const data = userDocSnap.data();
-            const baseRole = data.role || 'RESIDENTE';
-
-            // Determinar rol activo inicial
-            let initialActiveRole = baseRole;
-            if (baseRole === 'ADMINISTRADOR') {
-              const storedRole = localStorage.getItem(`activeRole_${firebaseUser.uid}`);
-              if (storedRole === 'PORTERÍA') {
-                initialActiveRole = 'PORTERÍA';
-              }
-            }
-
-            setUser({
-              id: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              firstName: data.firstName || '',
-              lastName: data.lastName || '',
-              role: baseRole,
-              tenantId: data.tenantId || '',
-            });
-            setActiveRole(initialActiveRole);
-          } else {
-            console.error('No se encontró el documento de perfil del usuario en Firestore');
-            setUser(null);
-            setActiveRole(null);
-          }
-        } catch (e) {
-          console.error('Error al cargar perfil de usuario de Firestore:', e);
-          setUser(null);
-          setActiveRole(null);
-        }
+        await loadUserFromFirestore(firebaseUser);
       } else {
         setUser(null);
         setActiveRole(null);
@@ -105,6 +111,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         message = 'El correo electrónico no es válido';
       }
       throw new Error(message);
+    }
+  };
+
+  const loginWithGooglePopup = async (): Promise<UserCredential> => {
+    setLoading(true);
+    try {
+      return await signInWithPopup(auth, googleProvider);
+    } catch (error: any) {
+      setLoading(false);
+      throw new Error(error.message || 'Error al iniciar sesión con Google');
+    }
+  };
+
+  const reloadUserProfile = async () => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      await loadUserFromFirestore(currentUser);
     }
   };
 
@@ -138,9 +161,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         activeRole,
         loading,
         login,
+        loginWithGooglePopup,
         logout,
         isAuthenticated: !!user,
         switchRole,
+        reloadUserProfile,
       }}
     >
       {children}
