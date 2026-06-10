@@ -412,6 +412,8 @@ export default function GatehousePage() {
           toName: `${resident.firstName} ${resident.lastName}`,
           subject: `📦 Llegó un paquete de ${pkgCarrier} para ti`,
           message: `Hola ${resident.firstName},\n\nTienes un paquete de ${pkgCarrier} esperándote en portería del conjunto.\n${pkgGuide ? `Número de guía: ${pkgGuide}\n` : ''}${pkgNotes ? `Nota: ${pkgNotes}\n` : ''}\nDiríjete a portería para reclamarlo en el horario habitual.\n\nSaludos,\nAdministración`,
+          tenantId: user.tenantId,
+          type: 'package',
         });
       }
 

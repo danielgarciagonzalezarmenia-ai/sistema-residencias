@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { db } from '../../../lib/firebase';
@@ -59,7 +59,7 @@ interface SendProgressLog {
   email: string;
   name: string;
   status: 'pending' | 'success' | 'error';
-  mode?: 'real' | 'demo';
+  mode?: 'backend' | 'emailjs' | 'demo' | 'real';
   errorMsg?: string;
 }
 
@@ -275,6 +275,8 @@ export default function AnnouncementsPage() {
               toName: target.name,
               subject: `Comunicado - Club Residencial: ${title}`,
               message: body,
+              tenantId: user.tenantId,
+              type: 'announcement',
             });
 
             setProgressLogs((prev) =>

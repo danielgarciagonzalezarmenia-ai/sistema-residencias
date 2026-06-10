@@ -578,6 +578,8 @@ export default function PropertiesPage() {
         toName: mailTargetName,
         subject: mailSubject,
         message: mailMessage,
+        tenantId: user?.tenantId,
+        type: 'general',
       });
 
       setMailSuccess(result.message || 'Correo enviado exitosamente.');

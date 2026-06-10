@@ -142,6 +142,8 @@ export default function GmailsPage() {
         subject: subject,
         message: message,
         fromName: tenantName,
+        tenantId: user?.tenantId,
+        type: 'general',
       });
 
       if (result.success) {
@@ -156,7 +158,7 @@ export default function GmailsPage() {
         });
 
         setStatusMsg({
-          text: result.mode === 'real' ? 'Correo real enviado exitosamente.' : 'Correo enviado (Modo Demo).',
+          text: result.mode !== 'demo' ? 'Correo real enviado exitosamente.' : 'Correo enviado (Modo Demo).',
           type: 'success'
         });
         setSubject('');

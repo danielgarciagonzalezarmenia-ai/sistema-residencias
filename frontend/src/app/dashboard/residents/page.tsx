@@ -263,6 +263,8 @@ export default function ResidentsPage() {
         subject: mailSubject,
         message: mailMessage,
         fromName: tenantName,
+        tenantId: user?.tenantId,
+        type: 'general',
       });
 
       setMailSuccess(result.message || 'Correo enviado exitosamente.');

@@ -27,68 +27,77 @@ try {
   console.error('❌ Error initializing Firebase Admin:', error);
 }
 
-// ── Nodemailer (Gmail) ──────────────────────────────────
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,       // ej: residenciaspro@gmail.com
-    pass: process.env.GMAIL_APP_PASS,   // contraseña de aplicación de Google
-  },
-});
+// ── Crear transporter dinámico por tenant ───────────────
+async function getTransporterForTenant(tenantId) {
+  const tenantDoc = await admin.firestore().collection('tenants').doc(tenantId).get();
+  if (!tenantDoc.exists) {
+    throw new Error('Conjunto no encontrado');
+  }
 
-// Verificar conexión SMTP al iniciar
-transporter.verify().then(() => {
-  console.log('✅ Conexión SMTP con Gmail exitosa');
-}).catch((err) => {
-  console.error('❌ Error conectando a Gmail SMTP:', err.message);
-});
+  const tenantData = tenantDoc.data();
+  if (!tenantData.smtpEmail || !tenantData.smtpPassword) {
+    throw new Error('El administrador no ha configurado el correo de notificaciones. Ve a Configuración > Correo de Notificaciones.');
+  }
 
-// ── Endpoint: Enviar notificación por correo ────────────
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: tenantData.smtpEmail,
+      pass: tenantData.smtpPassword,
+    },
+  });
+
+  return { transporter, senderEmail: tenantData.smtpEmail, tenantName: tenantData.name || 'Tu Conjunto' };
+}
+
+// ── Endpoint: Enviar correo ─────────────────────────────
 app.post('/send-email', async (req, res) => {
   try {
-    const { recipientId, tenantId, subject, body, type } = req.body;
+    const { recipientId, recipientEmail, tenantId, subject, body, type } = req.body;
 
-    if (!recipientId || !subject || !body) {
-      return res.status(400).json({ error: 'Faltan parámetros: recipientId, subject, body' });
+    if (!tenantId || !subject || !body) {
+      return res.status(400).json({ error: 'Faltan parámetros: tenantId, subject, body' });
     }
 
-    let recipientEmail = null;
-    let recipientName = '';
+    // Obtener transporter del tenant
+    let transporterInfo;
+    try {
+      transporterInfo = await getTransporterForTenant(tenantId);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
 
-    // Si es para el ADMIN del tenant
-    if (recipientId === 'ADMIN') {
-      if (!tenantId) return res.status(400).json({ error: 'Falta tenantId para notificar al Admin' });
-      const adminSnap = await admin.firestore().collection('users')
-        .where('tenantId', '==', tenantId)
-        .where('role', '==', 'ADMINISTRADOR')
-        .limit(1)
-        .get();
-      if (!adminSnap.empty) {
-        const adminData = adminSnap.docs[0].data();
-        recipientEmail = adminData.email;
-        recipientName = `${adminData.firstName || ''} ${adminData.lastName || ''}`.trim();
-      }
-    } else {
-      // Buscar directamente al usuario
-      const userDoc = await admin.firestore().collection('users').doc(recipientId).get();
-      if (userDoc.exists) {
-        const userData = userDoc.data();
-        recipientEmail = userData.email;
-        recipientName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+    const { transporter, senderEmail, tenantName } = transporterInfo;
+
+    // Determinar el email del destinatario
+    let toEmail = recipientEmail || null;
+    let toName = '';
+
+    if (!toEmail && recipientId) {
+      if (recipientId === 'ADMIN') {
+        // Buscar al administrador
+        const adminSnap = await admin.firestore().collection('users')
+          .where('tenantId', '==', tenantId)
+          .where('role', '==', 'ADMINISTRADOR')
+          .limit(1)
+          .get();
+        if (!adminSnap.empty) {
+          const adminData = adminSnap.docs[0].data();
+          toEmail = adminData.email;
+          toName = `${adminData.firstName || ''} ${adminData.lastName || ''}`.trim();
+        }
+      } else {
+        const userDoc = await admin.firestore().collection('users').doc(recipientId).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          toEmail = userData.email;
+          toName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+        }
       }
     }
 
-    if (!recipientEmail) {
+    if (!toEmail) {
       return res.status(404).json({ error: 'No se encontró el correo del destinatario' });
-    }
-
-    // Obtener nombre del conjunto
-    let tenantNameLabel = 'Tu Conjunto Residencial';
-    if (tenantId) {
-      const tenantDoc = await admin.firestore().collection('tenants').doc(tenantId).get();
-      if (tenantDoc.exists) {
-        tenantNameLabel = tenantDoc.data().name || tenantNameLabel;
-      }
     }
 
     // Elegir icono según tipo
@@ -101,7 +110,7 @@ app.post('/send-email', async (req, res) => {
     };
     const icon = typeIcons[type] || '🔔';
 
-    // HTML del correo
+    // HTML profesional del correo
     const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -124,7 +133,7 @@ app.post('/send-email', async (req, res) => {
                           Residente<span style="color:#c4b5fd;">Pro</span>
                         </h1>
                         <p style="margin:4px 0 0; color:#ddd6fe; font-size:12px; font-weight:500;">
-                          ${tenantNameLabel}
+                          ${tenantName}
                         </p>
                       </td>
                       <td align="right" style="font-size:36px;">
@@ -137,10 +146,11 @@ app.post('/send-email', async (req, res) => {
               <!-- Body -->
               <tr>
                 <td style="padding:32px;">
+                  ${toName ? `<p style="margin:0 0 12px; color:#a1a1aa; font-size:13px;">Hola <strong style="color:#fafafa;">${toName}</strong>,</p>` : ''}
                   <h2 style="margin:0 0 16px; color:#fafafa; font-size:18px; font-weight:600;">
                     ${subject}
                   </h2>
-                  <p style="margin:0 0 24px; color:#a1a1aa; font-size:14px; line-height:1.7;">
+                  <p style="margin:0 0 24px; color:#a1a1aa; font-size:14px; line-height:1.7; white-space:pre-line;">
                     ${body}
                   </p>
                   <a href="https://danielgarciagonzalezarmenia-ai.github.io/sistema-residencias/dashboard"
@@ -153,7 +163,7 @@ app.post('/send-email', async (req, res) => {
               <tr>
                 <td style="padding:20px 32px; border-top:1px solid #27272a;">
                   <p style="margin:0; color:#52525b; font-size:11px; text-align:center;">
-                    Este correo fue enviado automáticamente por ResidentePro.<br/>
+                    Este correo fue enviado desde ${tenantName} a través de ResidentePro.<br/>
                     Si no reconoces esta notificación, ignora este mensaje.
                   </p>
                 </td>
@@ -168,13 +178,13 @@ app.post('/send-email', async (req, res) => {
 
     // Enviar correo
     const info = await transporter.sendMail({
-      from: `"ResidentePro 🏢" <${process.env.GMAIL_USER}>`,
-      to: recipientEmail,
-      subject: `${icon} ${subject} — ResidentePro`,
+      from: `"${tenantName} — ResidentePro 🏢" <${senderEmail}>`,
+      to: toEmail,
+      subject: `${icon} ${subject}`,
       html: htmlContent,
     });
 
-    console.log(`📧 Correo enviado a ${recipientEmail}: ${info.messageId}`);
+    console.log(`📧 Correo enviado a ${toEmail} desde ${senderEmail}: ${info.messageId}`);
     res.status(200).json({ success: true, messageId: info.messageId });
 
   } catch (error) {
@@ -185,7 +195,7 @@ app.post('/send-email', async (req, res) => {
 
 // ── Health Check ────────────────────────────────────────
 app.get('/', (req, res) => {
-  res.json({ status: 'ok', service: 'ResidentePro Email Notifications' });
+  res.json({ status: 'ok', service: 'ResidentePro Email Notifications (per-tenant)' });
 });
 
 const PORT = process.env.PORT || 5000;

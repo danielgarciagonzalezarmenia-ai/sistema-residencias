@@ -42,6 +42,7 @@ import {
   CreditCard,
   AlertCircle,
   Mail,
+  Settings,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -146,6 +147,12 @@ const ALL_MENU_ITEMS: MenuItem[] = [
     name: 'Suscripción SaaS',
     href: '/dashboard/subscription',
     icon: <CreditCard className="h-5 w-5" />,
+    roles: ['ADMINISTRADOR'],
+  },
+  {
+    name: 'Configuración',
+    href: '/dashboard/settings',
+    icon: <Settings className="h-5 w-5" />,
     roles: ['ADMINISTRADOR'],
   },
 ];
