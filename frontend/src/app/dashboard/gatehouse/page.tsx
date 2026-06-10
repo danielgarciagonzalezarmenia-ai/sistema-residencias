@@ -414,6 +414,12 @@ export default function GatehousePage() {
           message: `Hola ${resident.firstName},\n\nTienes un paquete de ${pkgCarrier} esperándote en portería del conjunto.\n${pkgGuide ? `Número de guía: ${pkgGuide}\n` : ''}${pkgNotes ? `Nota: ${pkgNotes}\n` : ''}\nDiríjete a portería para reclamarlo en el horario habitual.\n\nSaludos,\nAdministración`,
           tenantId: user.tenantId,
           type: 'package',
+          metadata: {
+            carrier: pkgCarrier,
+            guide: pkgGuide || 'Sin número de guía',
+            notes: pkgNotes || 'Ninguna',
+            date: new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }),
+          },
         });
       }
 

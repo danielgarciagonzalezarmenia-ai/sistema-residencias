@@ -10,11 +10,12 @@ interface EmailParams {
   type?: 'package' | 'announcement' | 'pqrs' | 'payment' | 'general';
   recipientId?: string;
   tenantId?: string;
+  metadata?: Record<string, any>;
 }
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://notificaciones-residentepro2.onrender.com';
 
-export async function sendEmail({ toEmail, toName, subject, message, fromName, type, recipientId, tenantId }: EmailParams): Promise<{ success: boolean; mode: 'backend' | 'emailjs' | 'demo'; message: string }> {
+export async function sendEmail({ toEmail, toName, subject, message, fromName, type, recipientId, tenantId, metadata }: EmailParams): Promise<{ success: boolean; mode: 'backend' | 'emailjs' | 'demo'; message: string }> {
 
   // ── Canal 1: Backend propio en Render (Gmail del admin) ──
   if (tenantId) {
@@ -29,6 +30,7 @@ export async function sendEmail({ toEmail, toName, subject, message, fromName, t
           subject,
           body: message,
           type: type || 'general',
+          metadata,
         }),
       });
 
