@@ -141,7 +141,7 @@ function RegisterForm() {
             lastName,
             document: '', // They can update it later
             email,
-            phone: '',
+            phone,
             status: 'PENDING',
             tenantId: inviteTenantId,
             properties: prop ? [{ id: prop.id, tower: prop.tower, unit: prop.unit }] : [],
@@ -178,6 +178,7 @@ function RegisterForm() {
             email,
             role: 'RESIDENTE',
             tenantId: matchedTenantId,
+            phone,
             createdAt: new Date(),
           });
 
@@ -248,6 +249,7 @@ function RegisterForm() {
              email: userEmail,
              role: 'RESIDENTE',
              tenantId: matchedTenantId,
+             phone,
              createdAt: new Date(),
            });
            
@@ -311,6 +313,7 @@ function RegisterForm() {
           email: userEmail,
           role: 'RESIDENTE',
           tenantId: inviteTenantId,
+          phone,
           createdAt: new Date(),
         });
 
@@ -320,7 +323,7 @@ function RegisterForm() {
           lastName,
           document: '',
           email: userEmail,
-          phone: '',
+          phone,
           status: 'PENDING',
           tenantId: inviteTenantId,
           properties: prop ? [{ id: prop.id, tower: prop.tower, unit: prop.unit }] : [],
@@ -524,6 +527,17 @@ function RegisterForm() {
                       </select>
                     </div>
                   </div>
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Teléfono Celular *</label>
+                    <input
+                      type="tel"
+                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="Ej. 300 123 4567"
+                      className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 focus:outline-none focus:border-violet-500/80 transition-colors text-xs"
+                    />
+                  </div>
                 </>
               )}
 
@@ -593,6 +607,21 @@ function RegisterForm() {
                     />
                   </div>
                 </div>
+
+                {activeTab === 'resident' && (
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Teléfono Celular *</label>
+                    <input
+                      type="tel"
+                      required
+                      disabled={loading || success}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="Ej. 300 123 4567"
+                      className="w-full px-3 py-2 bg-zinc-950/60 border border-zinc-800 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500/80 transition-colors text-xs disabled:opacity-50"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs text-zinc-400 mb-1.5">Correo Electrónico *</label>
