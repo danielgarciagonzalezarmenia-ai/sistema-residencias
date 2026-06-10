@@ -47,6 +47,7 @@ export default function SubscriptionPage() {
   const [subscriptionStatus, setSubscriptionStatus] = useState<'ACTIVE' | 'GRACE' | 'LOCKED'>('ACTIVE');
   const [graceDaysLeft, setGraceDaysLeft] = useState(3);
   const [invoices, setInvoices] = useState<BillingInvoice[]>([]);
+  const [isTrial, setIsTrial] = useState(false);
 
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -62,6 +63,7 @@ export default function SubscriptionPage() {
         if (data.subscriptionExpiresAt) {
           const expiresAt = data.subscriptionExpiresAt.toDate();
           setSubscriptionExpiresAt(expiresAt);
+          setIsTrial(!!data.isTrial);
 
           const now = new Date();
           if (now <= expiresAt) {
@@ -77,13 +79,15 @@ export default function SubscriptionPage() {
             }
           }
         } else {
-          // Asignar 30 días de prueba
+          // Asignar 7 dias de prueba si no existe la suscripcion
           const dummyExpires = new Date();
-          dummyExpires.setDate(dummyExpires.getDate() + 30);
+          dummyExpires.setDate(dummyExpires.getDate() + 7);
           await updateDoc(doc(db, 'tenants', user.tenantId), {
             subscriptionExpiresAt: dummyExpires,
+            isTrial: true
           });
           setSubscriptionExpiresAt(dummyExpires);
+          setIsTrial(true);
           setSubscriptionStatus('ACTIVE');
         }
       }
@@ -167,10 +171,10 @@ export default function SubscriptionPage() {
 
           <div className="p-5 rounded-2xl border border-zinc-800 bg-zinc-900/40 space-y-5">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                Plan Mensual
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${isTrial ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20' : 'text-violet-400 bg-violet-500/10 border border-violet-500/20'}`}>
+                {isTrial ? 'Prueba de 7 Dias' : 'Plan Mensual'}
               </span>
-              <span className="text-xs font-bold text-zinc-400">Activo</span>
+              <span className="text-xs font-bold text-zinc-400">{isTrial ? 'Demo' : 'Activo'}</span>
             </div>
 
             <div>
@@ -191,7 +195,11 @@ export default function SubscriptionPage() {
 
               <div className="flex items-center justify-between text-xs text-zinc-400">
                 <span>Estado actual:</span>
-                {subscriptionStatus === 'ACTIVE' ? (
+                {isTrial ? (
+                  <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                    Prueba (7 dias)
+                  </span>
+                ) : subscriptionStatus === 'ACTIVE' ? (
                   <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
                     Suscrito
                   </span>
