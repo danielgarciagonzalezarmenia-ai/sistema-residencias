@@ -6,9 +6,10 @@ interface EmailParams {
   toName: string;
   subject: string;
   message: string;
+  fromName?: string;
 }
 
-export async function sendEmail({ toEmail, toName, subject, message }: EmailParams): Promise<{ success: boolean; mode: 'real' | 'demo'; message: string }> {
+export async function sendEmail({ toEmail, toName, subject, message, fromName }: EmailParams): Promise<{ success: boolean; mode: 'real' | 'demo'; message: string }> {
   const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
   const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID;
   const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
@@ -17,6 +18,7 @@ export async function sendEmail({ toEmail, toName, subject, message }: EmailPara
     console.warn(
       `[EmailJS - Modo Demo] No se han configurado las variables de entorno para EmailJS.\n` +
       `Enviando correo ficticio a: ${toEmail}\n` +
+      `De: ${fromName || 'Administración'}\n` +
       `Asunto: ${subject}\n` +
       `Mensaje: ${message}`
     );
@@ -40,6 +42,7 @@ export async function sendEmail({ toEmail, toName, subject, message }: EmailPara
         template_params: {
           to_email: toEmail,
           to_name: toName,
+          from_name: fromName || 'Administración',
           subject: subject,
           message: message,
         },

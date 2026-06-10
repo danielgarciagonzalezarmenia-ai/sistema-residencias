@@ -10,6 +10,7 @@ import {
   getDocs,
   addDoc,
   doc,
+  getDoc,
   updateDoc,
   deleteDoc,
   orderBy,
@@ -248,11 +249,20 @@ export default function ResidentsPage() {
     setMailSuccess(null);
 
     try {
+      let tenantName = 'Administración';
+      if (user?.tenantId) {
+        const tenantSnap = await getDoc(doc(db, 'tenants', user.tenantId));
+        if (tenantSnap.exists()) {
+          tenantName = tenantSnap.data().name || 'Administración';
+        }
+      }
+
       const result = await sendEmail({
         toEmail: mailTargetResident.email,
         toName: `${mailTargetResident.firstName} ${mailTargetResident.lastName}`,
         subject: mailSubject,
         message: mailMessage,
+        fromName: tenantName,
       });
 
       setMailSuccess(result.message || 'Correo enviado exitosamente.');

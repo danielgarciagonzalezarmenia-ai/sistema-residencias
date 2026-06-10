@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { db } from '../../../lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
 import { sendEmail } from '../../../lib/mail';
 import { Mail, Search, Send, CheckCircle2, User, Loader2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -76,11 +76,20 @@ export default function GmailsPage() {
     setSending(true);
     setStatusMsg(null);
     try {
+      let tenantName = 'Administración';
+      if (user?.tenantId) {
+        const tenantSnap = await getDoc(doc(db, 'tenants', user.tenantId));
+        if (tenantSnap.exists()) {
+          tenantName = tenantSnap.data().name || 'Administración';
+        }
+      }
+
       const result = await sendEmail({
         toEmail: selectedResident.email,
         toName: `${selectedResident.firstName} ${selectedResident.lastName}`,
         subject: subject,
         message: message,
+        fromName: tenantName,
       });
 
       if (result.success) {
