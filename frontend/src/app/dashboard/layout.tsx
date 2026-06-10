@@ -686,7 +686,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.97 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-11 w-80 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                    className="fixed right-4 left-4 top-16 w-auto sm:absolute sm:right-0 sm:left-auto sm:top-11 sm:w-80 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden"
                   >
                     <div className="p-4 border-b border-zinc-800/60 flex items-center justify-between">
                       <h3 className="text-xs font-bold text-zinc-200">Notificaciones</h3>
@@ -758,7 +758,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.97 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-11 w-64 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                    className="fixed right-4 left-4 top-16 w-auto sm:absolute sm:right-0 sm:left-auto sm:top-11 sm:w-64 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden"
                   >
                     <div className="p-4 border-b border-zinc-800/60">
                       <p className="text-xs font-bold text-zinc-200">{user?.firstName} {user?.lastName}</p>
