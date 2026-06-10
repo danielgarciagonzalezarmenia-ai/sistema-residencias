@@ -26,6 +26,7 @@ import {
   Mail,
   Link as LinkIcon,
   Check,
+  Download,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sendEmail } from '../../../lib/mail';
@@ -150,8 +151,8 @@ export default function ResidentsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName || !lastName || !document || !email) {
-      setFormError('Los campos Nombre, Apellido, Documento y Correo son obligatorios.');
+    if (!firstName || !lastName || !document || !email || !phone) {
+      setFormError('Todos los campos (Nombre, Apellido, Documento, Correo y Teléfono) son obligatorios.');
       return;
     }
 
@@ -195,6 +196,36 @@ export default function ResidentsPage() {
           : { inhabitantId: docRef.id, inhabitantName: name, status: 'OCCUPIED' };
         
         await updateDoc(doc(db, 'properties', selectedPropertyId), updateData);
+      }
+
+      // Enviar correo de bienvenida de forma asíncrona
+      if (email) {
+        (async () => {
+          try {
+            let tenantName = 'Administración';
+            if (user.tenantId) {
+              const tenantSnap = await getDoc(doc(db, 'tenants', user.tenantId));
+              if (tenantSnap.exists()) {
+                tenantName = tenantSnap.data().name || 'Administración';
+              }
+            }
+
+            const welcomeSubject = `Bienvenido(a) a ${tenantName} - Registro de Residente`;
+            const welcomeMessage = `¡Hola, ${firstName} ${lastName}!\n\nTe damos la bienvenida a tu portal de administración residencial.\n\nHemos registrado tu usuario con este correo electrónico (${email}). A partir de ahora podrás acceder para revisar comunicados, registrar PQRS, reservar zonas comunes y gestionar la entrega de tus paquetes en portería.\n\nPara ingresar, por favor dirígete a la plataforma y regístrate o inicia sesión con este correo.\n\nSaludos cordiales,\nLa administración de ${tenantName}`;
+
+            await sendEmail({
+              toEmail: email,
+              toName: `${firstName} ${lastName}`,
+              subject: welcomeSubject,
+              message: welcomeMessage,
+              fromName: tenantName,
+              tenantId: user.tenantId,
+              type: 'general',
+            });
+          } catch (mailErr) {
+            console.error('Error al enviar correo de bienvenida:', mailErr);
+          }
+        })();
       }
 
       // Limpiar formulario
@@ -308,6 +339,34 @@ export default function ResidentsPage() {
     return matchStatus && matchTower && matchUnit;
   });
 
+  const handleExportCSV = () => {
+    const headers = ['Nombre', 'Apellido', 'Documento', 'Correo', 'Teléfono', 'Estado', 'Torre', 'Apartamento'];
+    const rows = filteredResidents.map((r) => [
+      r.firstName,
+      r.lastName,
+      r.document,
+      r.email,
+      r.phone,
+      r.status === 'ACTIVE' ? 'Activo' : r.status === 'PENDING' ? 'Pendiente' : 'Inactivo',
+      r.properties.map(p => p.tower).join(' / '),
+      r.properties.map(p => p.unit).join(' / ')
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `residentes_${new Date().toISOString().split('T')[0]}.csv`);
+    window.document.body.appendChild(link);
+    link.click();
+    window.document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
@@ -323,6 +382,15 @@ export default function ResidentsPage() {
         </div>
 
         <div className="flex items-center space-x-3">
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl transition-colors shadow-lg shadow-zinc-800/10"
+            title="Exportar a CSV/Excel"
+          >
+            <Download className="h-4 w-4" />
+            <span>Exportar</span>
+          </button>
+
           <button
             onClick={handleCopyInviteLink}
             className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl transition-colors shadow-lg shadow-zinc-800/10"
@@ -565,9 +633,10 @@ export default function ResidentsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-zinc-400 mb-1.5">Teléfono</label>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Teléfono *</label>
                     <input
                       type="text"
+                      required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="3001234567"

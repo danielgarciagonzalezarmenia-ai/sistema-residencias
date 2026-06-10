@@ -28,6 +28,7 @@ import {
   Home,
   Check,
   TrendingUp,
+  Download,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -285,6 +286,34 @@ export default function PqrsPage() {
     });
   };
 
+  const handleExportPqrsCSV = () => {
+    const headers = ['Categoría', 'Título', 'Descripción', 'Estado', 'Residente', 'Unidad/Apartamento', 'Respuesta de Administración', 'Fecha de Registro'];
+    const rows = filteredList.map((item) => [
+      item.category,
+      item.title,
+      item.description,
+      STATUS_LABELS[item.status] || item.status,
+      item.userName,
+      item.unitInfo,
+      item.adminResponse || 'Sin respuesta',
+      item.createdAt?.seconds ? new Date(item.createdAt.seconds * 1000).toLocaleString('es-CO') : '—'
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `pqrs_${new Date().toISOString().split('T')[0]}.csv`);
+    window.document.body.appendChild(link);
+    link.click();
+    window.document.body.removeChild(link);
+  };
+
   const isPorter = user?.role === 'PORTERÍA';
   const isAdmin = user?.role === 'ADMINISTRADOR';
 
@@ -303,19 +332,31 @@ export default function PqrsPage() {
               : 'Radica tus solicitudes y haz seguimiento al estado de respuesta.'}
           </p>
         </div>
-        {user?.role === 'RESIDENTE' && (
-          <button
-            onClick={() => {
-              setFormError(null);
-              setFormSuccess(false);
-              setIsCreateOpen(true);
-            }}
-            className="inline-flex items-center space-x-1.5 px-4 py-2.5 text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all shadow-lg shadow-violet-600/20"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Radicar Solicitud</span>
-          </button>
-        )}
+        <div className="flex items-center space-x-3 shrink-0">
+          {isAdmin && (
+            <button
+              onClick={handleExportPqrsCSV}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl transition-colors border border-zinc-750 shadow-md"
+              title="Exportar PQRS a Excel"
+            >
+              <Download className="h-4 w-4" />
+              <span>Exportar</span>
+            </button>
+          )}
+          {user?.role === 'RESIDENTE' && (
+            <button
+              onClick={() => {
+                setFormError(null);
+                setFormSuccess(false);
+                setIsCreateOpen(true);
+              }}
+              className="inline-flex items-center space-x-1.5 px-4 py-2.5 text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all shadow-lg shadow-violet-600/20"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Radicar Solicitud</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filtros */}

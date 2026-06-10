@@ -36,7 +36,7 @@ import {
   Dumbbell,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit2, Save, X } from 'lucide-react';
+import { Edit2, Save, X, Download } from 'lucide-react';
 
 // --- ESPACIOS COMUNES ---
 interface CommonSpace {
@@ -324,6 +324,7 @@ export default function ReservationsPage() {
         endTime,
         userId: user.id,
         userName: `${user.firstName} ${user.lastName}`,
+        userEmail: user.email || '',
         unitInfo: residentUnit,
         notes: notes.trim(),
         createdAt: serverTimestamp(),
@@ -382,17 +383,59 @@ export default function ReservationsPage() {
     );
   };
 
+  const handleExportReservationsCSV = () => {
+    const headers = ['Espacio Común', 'Fecha', 'Hora Inicio', 'Hora Fin', 'Reservado Por', 'Unidad / Apartamento', 'Notas', 'Fecha de Creación'];
+    const rows = reservations.map((r) => [
+      r.spaceName,
+      r.date,
+      r.startTime,
+      r.endTime,
+      r.userName,
+      r.unitInfo,
+      r.notes || 'Ninguna',
+      r.createdAt?.seconds ? new Date(r.createdAt.seconds * 1000).toLocaleString('es-CO') : '—'
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `reservas_${new Date().toISOString().split('T')[0]}.csv`);
+    window.document.body.appendChild(link);
+    link.click();
+    window.document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-100 flex items-center space-x-2.5">
-          <CalendarDays className="h-7 w-7 text-violet-400" />
-          <span>Reservas de Zonas Comunes</span>
-        </h1>
-        <p className="text-xs text-zinc-500 mt-1 font-medium">
-          Consulta disponibilidad, agenda salones o áreas deportivas y gestiona tus horarios.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-100 flex items-center space-x-2.5">
+            <CalendarDays className="h-7 w-7 text-violet-400" />
+            <span>Reservas de Zonas Comunes</span>
+          </h1>
+          <p className="text-xs text-zinc-500 mt-1 font-medium">
+            Consulta disponibilidad, agenda salones o áreas deportivas y gestiona tus horarios.
+          </p>
+        </div>
+        {isAdmin && (
+          <div>
+            <button
+              onClick={handleExportReservationsCSV}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl transition-all border border-zinc-750 shadow-md animate-fade-in"
+              title="Exportar reservas a Excel"
+            >
+              <Download className="h-4 w-4" />
+              <span>Exportar Reservas</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Selector de Espacio Común */}

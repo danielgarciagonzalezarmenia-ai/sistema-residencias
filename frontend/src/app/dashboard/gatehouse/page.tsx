@@ -36,6 +36,7 @@ import {
   Hash,
   ChevronRight,
   Bell,
+  Download,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sendEmail } from '../../../lib/mail';
@@ -523,6 +524,35 @@ export default function GatehousePage() {
   const pendingPkgs = packages.filter(p => p.status === 'PENDING').length;
   const insideVisitors = visitors.filter(v => v.status === 'INSIDE').length;
 
+  const handleExportPackagesCSV = () => {
+    const headers = ['Empresa', 'Número de Guía', 'Destinatario', 'Torre', 'Apartamento', 'Estado', 'Detalles', 'Fecha de Registro', 'Fecha de Entrega'];
+    const rows = packages.map((p) => [
+      p.carrier,
+      p.guideNumber || 'Sin guía',
+      p.residentName,
+      p.tower,
+      p.unit,
+      p.status === 'PENDING' ? 'En portería' : 'Entregado',
+      p.notes || 'Ninguna',
+      p.createdAt?.seconds ? new Date(p.createdAt.seconds * 1000).toLocaleString('es-CO') : '—',
+      p.deliveredAt?.seconds ? new Date(p.deliveredAt.seconds * 1000).toLocaleString('es-CO') : '—'
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `correspondencia_${new Date().toISOString().split('T')[0]}.csv`);
+    window.document.body.appendChild(link);
+    link.click();
+    window.document.body.removeChild(link);
+  };
+
   // ─── RENDER ──────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 pb-12">
@@ -579,13 +609,23 @@ export default function GatehousePage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-xs text-zinc-500 font-medium">{packages.length} paquete(s) registrado(s)</p>
-            <button
-              onClick={() => { setPkgError(null); setIsPkgOpen(true); }}
-              className="inline-flex items-center space-x-1.5 px-3.5 py-2 text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all shadow-lg shadow-violet-600/20"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Registrar Paquete</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleExportPackagesCSV}
+                className="inline-flex items-center space-x-1.5 px-3 py-2 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl transition-all border border-zinc-750 shadow-md"
+                title="Exportar correspondencia a Excel"
+              >
+                <Download className="h-4 w-4" />
+                <span>Exportar</span>
+              </button>
+              <button
+                onClick={() => { setPkgError(null); setIsPkgOpen(true); }}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all shadow-lg shadow-violet-600/20"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Registrar Paquete</span>
+              </button>
+            </div>
           </div>
 
           {loadingPkg ? (

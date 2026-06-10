@@ -142,7 +142,12 @@ const ALL_MENU_ITEMS: MenuItem[] = [
     icon: <Mail className="h-5 w-5" />,
     roles: ['ADMINISTRADOR', 'PORTERÍA'],
   },
-
+  {
+    name: 'Bitácora de Correos',
+    href: '/dashboard/email-logs',
+    icon: <Mail className="h-5 w-5" />,
+    roles: ['ADMINISTRADOR'],
+  },
   {
     name: 'Suscripción SaaS',
     href: '/dashboard/subscription',
@@ -549,7 +554,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isLocked = subscriptionStatus === 'LOCKED' && currentRole === 'ADMINISTRADOR';
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col md:flex-row pb-16 md:pb-0">
+    <div className="min-h-screen md:h-screen bg-zinc-950 text-zinc-100 flex flex-col md:flex-row pb-16 md:pb-0 md:overflow-hidden">
 
       {/* SIDEBAR — Tablet & Desktop */}
       <aside className="hidden md:flex flex-col bg-zinc-900 border-r border-zinc-800/60 md:w-20 lg:w-64 shrink-0 transition-all duration-300">
