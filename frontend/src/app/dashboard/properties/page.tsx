@@ -604,7 +604,7 @@ export default function PropertiesPage() {
     try {
       const [propSnap, resSnap] = await Promise.all([
         getDocs(query(collection(db, 'properties'), where('tenantId', '==', user.tenantId))),
-        getDocs(query(collection(db, 'residents'), where('tenantId', '==', user.tenantId), where('status', '==', 'ACTIVE'))),
+        getDocs(query(collection(db, 'residents'), where('tenantId', '==', user.tenantId))),
       ]);
 
       const propList: Property[] = [];
@@ -624,26 +624,89 @@ export default function PropertiesPage() {
           tenantId: data.tenantId || '',
         });
       });
+
+      // Autodetectar y asociar propietarios/inquilinos registrados que no estén vinculados en la propiedad
+      let updatedSome = false;
+      const updatedPropList = [...propList];
+
+      for (const resDoc of resSnap.docs) {
+        const resData = resDoc.data();
+        if (resData.status === 'INACTIVE') continue;
+
+        const resId = resDoc.id;
+        const resName = `${resData.firstName || ''} ${resData.lastName || ''}`.trim();
+        const resProps = resData.properties || []; // array de { id, tower, unit }
+        const resRole = resData.propertyRole || 'owner'; // 'owner' o 'inhabitant'
+
+        for (const pLink of resProps) {
+          const propIdx = updatedPropList.findIndex(p => p.id === pLink.id || (p.tower === pLink.tower && p.unit === pLink.unit));
+          if (propIdx !== -1) {
+            const prop = updatedPropList[propIdx];
+            let needsUpdate = false;
+            const updateFields: any = {};
+
+            if (resRole === 'owner' && prop.ownerId !== resId) {
+              updateFields.ownerId = resId;
+              updateFields.ownerName = resName;
+              updateFields.status = 'OCCUPIED';
+              needsUpdate = true;
+              
+              updatedPropList[propIdx] = {
+                ...prop,
+                ownerId: resId,
+                ownerName: resName,
+                status: 'OCCUPIED'
+              };
+            } else if (resRole === 'inhabitant' && prop.inhabitantId !== resId) {
+              updateFields.inhabitantId = resId;
+              updateFields.inhabitantName = resName;
+              updateFields.status = 'OCCUPIED';
+              needsUpdate = true;
+
+              updatedPropList[propIdx] = {
+                ...prop,
+                inhabitantId: resId,
+                inhabitantName: resName,
+                status: 'OCCUPIED'
+              };
+            }
+
+            if (needsUpdate) {
+              updatedSome = true;
+              (async () => {
+                try {
+                  await updateDoc(doc(db, 'properties', prop.id), updateFields);
+                } catch (err) {
+                  console.error('Error auto-syncing property:', prop.id, err);
+                }
+              })();
+            }
+          }
+        }
+      }
+
       // Ordenar por torre y luego por unidad (numérico si aplica)
-      propList.sort((a, b) => {
+      updatedPropList.sort((a, b) => {
         if (a.tower !== b.tower) return a.tower.localeCompare(b.tower);
         const aFloor = a.floor ?? 0;
         const bFloor = b.floor ?? 0;
         if (aFloor !== bFloor) return aFloor - bFloor;
         return a.unit.localeCompare(b.unit, undefined, { numeric: true });
       });
-      setProperties(propList);
+      setProperties(updatedPropList);
 
       const resList: ResidentOption[] = [];
       resSnap.forEach(d => {
         const data = d.data();
-        resList.push({
-          id: d.id,
-          firstName: data.firstName || '',
-          lastName: data.lastName || '',
-          email: data.email || '',
-          properties: data.properties || [],
-        });
+        if (data.status !== 'INACTIVE') {
+          resList.push({
+            id: d.id,
+            firstName: data.firstName || '',
+            lastName: data.lastName || '',
+            email: data.email || '',
+            properties: data.properties || [],
+          });
+        }
       });
       setResidents(resList);
     } catch (e) { console.error(e); }

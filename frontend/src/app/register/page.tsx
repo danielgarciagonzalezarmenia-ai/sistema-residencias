@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { auth, db } from '../../lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, collection, addDoc, getDocs, query, where, getDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, addDoc, getDocs, query, where, getDoc, updateDoc } from 'firebase/firestore';
 import { Building2, Mail, Lock, User, Sparkles, Loader2, Building, AlertTriangle, CheckCircle2, FileText, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -67,6 +67,15 @@ function RegisterForm() {
           const snap = await getDocs(q);
           const props: any[] = [];
           snap.forEach(doc => props.push({ id: doc.id, ...doc.data() }));
+          props.sort((a, b) => {
+            const towerA = String(a.tower || '').trim();
+            const towerB = String(b.tower || '').trim();
+            const towerCompare = towerA.localeCompare(towerB, undefined, { numeric: true, sensitivity: 'base' });
+            if (towerCompare !== 0) return towerCompare;
+            const unitA = String(a.unit || '').trim();
+            const unitB = String(b.unit || '').trim();
+            return unitA.localeCompare(unitB, undefined, { numeric: true, sensitivity: 'base' });
+          });
           setProperties(props);
         } catch (err) {
           console.error('Error fetching properties', err);
@@ -151,7 +160,7 @@ function RegisterForm() {
           // 2. Agregar a la colección residents como PENDING
           const prop = properties.find(p => p.id === selectedPropertyId);
           const livesHere = propertyRole === 'inhabitant' || livesInProperty;
-          await addDoc(collection(db, 'residents'), {
+          const residentDocRef = await addDoc(collection(db, 'residents'), {
             firstName,
             lastName,
             document: '', // They can update it later
@@ -176,6 +185,15 @@ function RegisterForm() {
               description: petDescription.trim(),
             } : null,
           });
+
+          // Vincular de forma automatica en la coleccion properties
+          if (selectedPropertyId) {
+            const name = `${firstName} ${lastName}`;
+            const updateData = propertyRole === 'owner'
+              ? { ownerId: residentDocRef.id, ownerName: name, status: 'OCCUPIED' }
+              : { inhabitantId: residentDocRef.id, inhabitantName: name, status: 'OCCUPIED' };
+            await updateDoc(doc(db, 'properties', selectedPropertyId), updateData);
+          }
 
           setSuccess(true);
           setTimeout(() => router.push('/dashboard'), 1500);
@@ -348,7 +366,7 @@ function RegisterForm() {
 
         const prop = properties.find(p => p.id === selectedPropertyId);
         const livesHere = propertyRole === 'inhabitant' || livesInProperty;
-        await addDoc(collection(db, 'residents'), {
+        const residentDocRef = await addDoc(collection(db, 'residents'), {
           firstName,
           lastName,
           document: '',
@@ -373,6 +391,15 @@ function RegisterForm() {
             description: petDescription.trim(),
           } : null,
         });
+
+        // Vincular de forma automatica en la coleccion properties
+        if (selectedPropertyId) {
+          const name = `${firstName} ${lastName}`;
+          const updateData = propertyRole === 'owner'
+            ? { ownerId: residentDocRef.id, ownerName: name, status: 'OCCUPIED' }
+            : { inhabitantId: residentDocRef.id, inhabitantName: name, status: 'OCCUPIED' };
+          await updateDoc(doc(db, 'properties', selectedPropertyId), updateData);
+        }
       }
 
       setSuccess(true);
