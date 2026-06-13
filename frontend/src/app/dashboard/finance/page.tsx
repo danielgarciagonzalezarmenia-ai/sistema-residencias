@@ -46,6 +46,7 @@ interface PaymentReport {
   notes?: string;
   attachmentUrl?: string;
   createdAt: any;
+  paymentMonth?: string;
 }
 
 export default function FinancePage() {
@@ -69,6 +70,8 @@ export default function FinancePage() {
   const [newAdminFee, setNewAdminFee] = useState<number>(250000);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [reportMonth, setReportMonth] = useState('');
+  const [filterMonth, setFilterMonth] = useState('');
 
   // Cargar datos
   const fetchData = async () => {
@@ -117,7 +120,9 @@ export default function FinancePage() {
           reference: data.reference || '',
           status: data.status || 'PENDING',
           notes: data.notes || '',
+          attachmentUrl: data.attachmentUrl || '',
           createdAt: data.createdAt,
+          paymentMonth: data.paymentMonth || '',
         });
       });
       setPayments(list);
@@ -200,6 +205,7 @@ export default function FinancePage() {
         status: 'PENDING',
         notes: reportNotes,
         attachmentUrl: reportAttachment,
+        paymentMonth: reportMonth,
         createdAt: serverTimestamp(),
       });
 
@@ -208,6 +214,7 @@ export default function FinancePage() {
       setReportAmount('');
       setReportReference('');
       setReportNotes('');
+      setReportMonth('');
       fetchData();
       setTimeout(() => setSuccessMessage(''), 4000);
     } catch (err) {
@@ -254,6 +261,20 @@ export default function FinancePage() {
       setActionLoading(false);
     }
   };
+
+  const getFallbackMonth = (createdAt: any) => {
+    if (!createdAt) return 'Enero';
+    const date = createdAt.seconds ? new Date(createdAt.seconds * 1000) : new Date(createdAt);
+    const months = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    return months[date.getMonth()];
+  };
+
+  const filteredPayments = filterMonth
+    ? payments.filter((pay) => (pay.paymentMonth || getFallbackMonth(pay.createdAt)) === filterMonth)
+    : payments;
 
   return (
     <div className="space-y-8 pb-8 font-sans text-zinc-100">
@@ -403,6 +424,32 @@ export default function FinancePage() {
 
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
+                      Mes a Pagar *
+                    </label>
+                    <select
+                      value={reportMonth}
+                      onChange={(e) => setReportMonth(e.target.value)}
+                      required
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2 text-xs text-zinc-200 focus:outline-none focus:border-violet-500/50 transition-all cursor-pointer"
+                    >
+                      <option value="" disabled>Seleccione el mes</option>
+                      <option value="Enero">Enero</option>
+                      <option value="Febrero">Febrero</option>
+                      <option value="Marzo">Marzo</option>
+                      <option value="Abril">Abril</option>
+                      <option value="Mayo">Mayo</option>
+                      <option value="Junio">Junio</option>
+                      <option value="Julio">Julio</option>
+                      <option value="Agosto">Agosto</option>
+                      <option value="Septiembre">Septiembre</option>
+                      <option value="Octubre">Octubre</option>
+                      <option value="Noviembre">Noviembre</option>
+                      <option value="Diciembre">Diciembre</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
                       Referencia o Número de Transacción
                     </label>
                     <input
@@ -459,9 +506,34 @@ export default function FinancePage() {
         <div className="lg:col-span-2 space-y-6">
 
           <div className="p-5 rounded-2xl border border-zinc-800 bg-zinc-900/20">
-            <h3 className="font-bold text-sm mb-4">
-              {isAdmin ? 'Historial e Ingresos Reportados' : 'Mis Pagos Registrados'}
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <h3 className="font-bold text-sm">
+                {isAdmin ? 'Historial e Ingresos Reportados' : 'Mis Pagos Registrados'}
+              </h3>
+
+              <div className="flex items-center space-x-2">
+                <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Filtrar por Mes:</span>
+                <select
+                  value={filterMonth}
+                  onChange={(e) => setFilterMonth(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-violet-500/50 transition-all cursor-pointer"
+                >
+                  <option value="">Todos</option>
+                  <option value="Enero">Enero</option>
+                  <option value="Febrero">Febrero</option>
+                  <option value="Marzo">Marzo</option>
+                  <option value="Abril">Abril</option>
+                  <option value="Mayo">Mayo</option>
+                  <option value="Junio">Junio</option>
+                  <option value="Julio">Julio</option>
+                  <option value="Agosto">Agosto</option>
+                  <option value="Septiembre">Septiembre</option>
+                  <option value="Octubre">Octubre</option>
+                  <option value="Noviembre">Noviembre</option>
+                  <option value="Diciembre">Diciembre</option>
+                </select>
+              </div>
+            </div>
 
             {loading ? (
               <div className="space-y-3">
@@ -469,14 +541,14 @@ export default function FinancePage() {
                   <div key={i} className="h-20 bg-zinc-900/60 rounded-xl animate-pulse" />
                 ))}
               </div>
-            ) : payments.length === 0 ? (
+            ) : filteredPayments.length === 0 ? (
               <div className="py-12 text-center border border-dashed border-zinc-800 rounded-xl space-y-3">
                 <FileText className="h-10 w-10 text-zinc-700 mx-auto" />
-                <p className="text-xs text-zinc-500 font-medium">No se han registrado reportes de pagos aún.</p>
+                <p className="text-xs text-zinc-500 font-medium">No se han registrado reportes de pagos para este mes.</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {payments.map((pay) => (
+                {filteredPayments.map((pay) => (
                   <div
                     key={pay.id}
                     className="p-4 bg-zinc-950/60 rounded-xl border border-zinc-800/60 hover:border-zinc-700/60 transition-colors flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
@@ -488,6 +560,9 @@ export default function FinancePage() {
                         </span>
                         <span className="text-[10px] text-zinc-500 font-mono">
                           Ref: {pay.reference}
+                        </span>
+                        <span className="text-[9px] font-bold bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded-full text-violet-400">
+                          Mes: {pay.paymentMonth || getFallbackMonth(pay.createdAt)}
                         </span>
                         {isAdmin && (
                           <span className="text-[9px] font-bold bg-zinc-800 border border-zinc-700 px-1.5 py-0.5 rounded-full text-zinc-400">
