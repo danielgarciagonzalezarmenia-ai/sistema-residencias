@@ -47,6 +47,7 @@ interface PaymentReport {
   attachmentUrl?: string;
   createdAt: any;
   paymentMonth?: string;
+  paymentYear?: string;
 }
 
 export default function FinancePage() {
@@ -72,6 +73,8 @@ export default function FinancePage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [reportMonth, setReportMonth] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
+  const [reportYear, setReportYear] = useState('');
+  const [filterYear, setFilterYear] = useState('');
 
   // Cargar datos
   const fetchData = async () => {
@@ -123,6 +126,7 @@ export default function FinancePage() {
           attachmentUrl: data.attachmentUrl || '',
           createdAt: data.createdAt,
           paymentMonth: data.paymentMonth || '',
+          paymentYear: data.paymentYear || '',
         });
       });
       setPayments(list);
@@ -206,6 +210,7 @@ export default function FinancePage() {
         notes: reportNotes,
         attachmentUrl: reportAttachment,
         paymentMonth: reportMonth,
+        paymentYear: reportYear,
         createdAt: serverTimestamp(),
       });
 
@@ -215,6 +220,7 @@ export default function FinancePage() {
       setReportReference('');
       setReportNotes('');
       setReportMonth('');
+      setReportYear('');
       fetchData();
       setTimeout(() => setSuccessMessage(''), 4000);
     } catch (err) {
@@ -272,9 +278,17 @@ export default function FinancePage() {
     return months[date.getMonth()];
   };
 
-  const filteredPayments = filterMonth
-    ? payments.filter((pay) => (pay.paymentMonth || getFallbackMonth(pay.createdAt)) === filterMonth)
-    : payments;
+  const getFallbackYear = (createdAt: any) => {
+    if (!createdAt) return new Date().getFullYear().toString();
+    const date = createdAt.seconds ? new Date(createdAt.seconds * 1000) : new Date(createdAt);
+    return date.getFullYear().toString();
+  };
+
+  const filteredPayments = payments.filter((pay) => {
+    const monthMatch = !filterMonth || (pay.paymentMonth || getFallbackMonth(pay.createdAt)) === filterMonth;
+    const yearMatch = !filterYear || (pay.paymentYear || getFallbackYear(pay.createdAt)) === filterYear;
+    return monthMatch && yearMatch;
+  });
 
   return (
     <div className="space-y-8 pb-8 font-sans text-zinc-100">
@@ -422,30 +436,54 @@ export default function FinancePage() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
-                      Mes a Pagar *
-                    </label>
-                    <select
-                      value={reportMonth}
-                      onChange={(e) => setReportMonth(e.target.value)}
-                      required
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2 text-xs text-zinc-200 focus:outline-none focus:border-violet-500/50 transition-all cursor-pointer"
-                    >
-                      <option value="" disabled>Seleccione el mes</option>
-                      <option value="Enero">Enero</option>
-                      <option value="Febrero">Febrero</option>
-                      <option value="Marzo">Marzo</option>
-                      <option value="Abril">Abril</option>
-                      <option value="Mayo">Mayo</option>
-                      <option value="Junio">Junio</option>
-                      <option value="Julio">Julio</option>
-                      <option value="Agosto">Agosto</option>
-                      <option value="Septiembre">Septiembre</option>
-                      <option value="Octubre">Octubre</option>
-                      <option value="Noviembre">Noviembre</option>
-                      <option value="Diciembre">Diciembre</option>
-                    </select>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
+                        Mes a Pagar *
+                      </label>
+                      <select
+                        value={reportMonth}
+                        onChange={(e) => setReportMonth(e.target.value)}
+                        required
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2 text-xs text-zinc-200 focus:outline-none focus:border-violet-500/50 transition-all cursor-pointer"
+                      >
+                        <option value="" disabled>Seleccione</option>
+                        <option value="Enero">Enero</option>
+                        <option value="Febrero">Febrero</option>
+                        <option value="Marzo">Marzo</option>
+                        <option value="Abril">Abril</option>
+                        <option value="Mayo">Mayo</option>
+                        <option value="Junio">Junio</option>
+                        <option value="Julio">Julio</option>
+                        <option value="Agosto">Agosto</option>
+                        <option value="Septiembre">Septiembre</option>
+                        <option value="Octubre">Octubre</option>
+                        <option value="Noviembre">Noviembre</option>
+                        <option value="Diciembre">Diciembre</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
+                        Año a Pagar *
+                      </label>
+                      <select
+                        value={reportYear}
+                        onChange={(e) => setReportYear(e.target.value)}
+                        required
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2 text-xs text-zinc-200 focus:outline-none focus:border-violet-500/50 transition-all cursor-pointer"
+                      >
+                        <option value="" disabled>Seleccione</option>
+                        {Array.from({ length: 6 }, (_, i) => {
+                          const year = (2025 + i).toString();
+                          return (
+                            <option key={year} value={year}>
+                              {year}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
                   </div>
 
                   <div>
@@ -511,14 +549,14 @@ export default function FinancePage() {
                 {isAdmin ? 'Historial e Ingresos Reportados' : 'Mis Pagos Registrados'}
               </h3>
 
-              <div className="flex items-center space-x-2">
-                <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Filtrar por Mes:</span>
+              <div className="flex items-center space-x-2 flex-wrap gap-2">
+                <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Filtrar:</span>
                 <select
                   value={filterMonth}
                   onChange={(e) => setFilterMonth(e.target.value)}
                   className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-violet-500/50 transition-all cursor-pointer"
                 >
-                  <option value="">Todos</option>
+                  <option value="">Todos los Meses</option>
                   <option value="Enero">Enero</option>
                   <option value="Febrero">Febrero</option>
                   <option value="Marzo">Marzo</option>
@@ -531,6 +569,22 @@ export default function FinancePage() {
                   <option value="Octubre">Octubre</option>
                   <option value="Noviembre">Noviembre</option>
                   <option value="Diciembre">Diciembre</option>
+                </select>
+
+                <select
+                  value={filterYear}
+                  onChange={(e) => setFilterYear(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-violet-500/50 transition-all cursor-pointer"
+                >
+                  <option value="">Todos los Años</option>
+                  {Array.from({ length: 6 }, (_, i) => {
+                    const year = (2025 + i).toString();
+                    return (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>
@@ -562,7 +616,7 @@ export default function FinancePage() {
                           Ref: {pay.reference}
                         </span>
                         <span className="text-[9px] font-bold bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded-full text-violet-400">
-                          Mes: {pay.paymentMonth || getFallbackMonth(pay.createdAt)}
+                          Período: {pay.paymentMonth || getFallbackMonth(pay.createdAt)} {pay.paymentYear || getFallbackYear(pay.createdAt)}
                         </span>
                         {isAdmin && (
                           <span className="text-[9px] font-bold bg-zinc-800 border border-zinc-700 px-1.5 py-0.5 rounded-full text-zinc-400">
